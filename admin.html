@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Gerencial</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;800&family=Playfair+Display:ital,wght@1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+</head>
+<body class="admin-body">
+
+    <header class="admin-header">
+        <div style="display:flex; align-items:center;">
+            <h1 class="admin-title">Panel Gerencial</h1>
+            <span class="admin-badge">ADMIN</span>
+        </div>
+        <div style="display:flex; gap:15px; align-items:center;">
+            <a href="index.html" style="color:#aaa; text-decoration:none; font-size:0.8rem;">Ver Carta</a>
+            <button onclick="cerrarSesion()" style="background:none; border:none; color:#ff5252; cursor:pointer;" title="Salir"><span class="material-icons">logout</span></button>
+        </div>
+    </header>
+
+    <div class="dashboard-grid">
+        
+        <div class="upload-zone">
+            <h3 style="color:white; margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">Gestión de Producto</h3>
+            
+            <form id="form-producto">
+                <input type="hidden" id="edit-id">
+
+                <div class="input-group">
+                    <label>Nombre</label>
+                    <input type="text" id="nombre" class="input-stylish" required>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                    <div class="input-group">
+                        <label>Precio</label>
+                        <input type="number" id="precio" class="input-stylish" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Categoría</label>
+                        <select id="categoria" class="input-stylish">
+                            <option value="cocteles">Cocteles</option>
+                            <option value="cervezas">Cervezas</option>
+                            <option value="licores">Vinos/Licor</option>
+                            <option value="bebidas_sin">Bebidas s/a</option>
+                            <option value="italiana">Pizzas/Pastas</option>
+                            <option value="fuertes">Carnes</option>
+                            <option value="tapas">Para Picar</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Foto <small style="color:#666; font-weight:normal;">(Opcional al editar)</small></label>
+                    <div class="file-upload-wrapper" onclick="document.getElementById('imagen-file').click()">
+                        <span class="material-icons" style="font-size:2rem; color:#666; margin-bottom:5px;">cloud_upload</span>
+                        <span class="file-upload-text">Toca para subir imagen</span>
+                        <input type="file" id="imagen-file" accept="image/*">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Descripción</label>
+                    <textarea id="descripcion" class="input-stylish" rows="2"></textarea>
+                </div>
+
+                <div style="background:#25252b; padding:15px; border-radius:10px; border:1px dashed #444; margin-bottom:20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <span style="color:var(--gold); font-size:0.8rem; font-weight:bold;">✨ Dato Curioso (IA)</span>
+                        <button type="button" id="btn-ia" onclick="generarCuriosidad()" style="background:var(--gold); border:none; padding:5px 12px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:0.7rem;">Generar</button>
+                    </div>
+                    <span id="loader-ia" style="display:none; color:#888; font-size:0.7rem;">Conectando...</span>
+                    <textarea id="curiosidad" class="input-stylish" rows="2" style="font-size:0.85rem; background:#1a1a20;" placeholder="Automático..."></textarea>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
+                    <input type="checkbox" id="destacado" style="width:18px; height:18px; accent-color:var(--gold);">
+                    <label for="destacado" style="margin:0; cursor:pointer; color:#ccc;">Marcar como "Destacado" 🌟</label>
+                </div>
+
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button type="submit" class="btn-big-action" id="btn-submit">GUARDAR PRODUCTO</button>
+                    <button type="button" id="btn-cancelar" onclick="cancelarEdicion()" style="background:transparent; border:1px solid #555; color:#ccc; padding:15px; border-radius:12px; cursor:pointer; display:none;">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="inventory-zone">
+            <h3 style="color:white; margin-bottom:20px;">Inventario</h3>
+            <div id="lista-admin" class="inventory-list">
+                </div>
+        </div>
+
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
