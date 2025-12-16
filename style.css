@@ -200,3 +200,53 @@ body.admin-body {
     text-transform: uppercase;
     letter-spacing: 2px;
 }
+/* --- style.css - Notificaciones Elegantes (Toasts) --- */
+
+#toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%); /* Centrado arriba */
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 90%;
+    max-width: 400px;
+    pointer-events: none; /* Para poder hacer clic "a través" si no hay toasts */
+}
+
+.toast {
+    background: rgba(20, 20, 20, 0.95);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    
+    /* Animación de entrada */
+    animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    pointer-events: auto;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.9rem;
+}
+
+/* Borde izquierdo de color según tipo */
+.toast.success { border-left: 4px solid var(--gold); }
+.toast.error { border-left: 4px solid var(--red-danger); }
+
+.toast-icon { font-size: 1.2rem; }
+.toast-msg { flex-grow: 1; }
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-20px) scale(0.9); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fadeOut {
+    to { opacity: 0; transform: translateY(-10px); }
+}
