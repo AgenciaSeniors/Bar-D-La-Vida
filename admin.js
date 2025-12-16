@@ -98,54 +98,69 @@ async function cargarAdmin() {
 // 3. GENERAR CURIOSIDAD CON IA (CORREGIDO)
 // admin.js - VERSIÓN CON CLAVE EN BASE DE DATOS
 
+// admin.js - VERSIÓN "EL CAMBIAZO" (Usa Groq pero lee la variable vieja)
+
 async function generarCuriosidad() {
     const nombre = document.getElementById('nombre').value;
     const campo = document.getElementById('curiosidad');
     const loader = document.getElementById('loader-ia');
     const btn = document.getElementById('btn-ia');
 
-    if (!nombre) { alert("Por favor escribe el nombre del producto primero."); return; }
+    if (!nombre) { alert("Escribe el nombre del producto primero."); return; }
 
     btn.disabled = true; 
     loader.style.display = "inline-block"; 
-    campo.value = "Buscando llave y generando...";
+    campo.value = "Pensando una curiosidad..."; // Mensaje de carga
 
     try {
-        // 1. OBTENER LA API KEY DESDE SUPABASE (Seguro)
-        // Solo funcionará si el usuario ha iniciado sesión (gracias a RLS)
-        const { data: secretos, error: errorSecreto } = await supabaseClient
+        // 1. RECUPERAR LA CLAVE (Usamos el nombre antiguo 'gemini_api_key' para no cambiar la BD)
+        let API_KEY = '';
+        
+        // Intenta leer de Supabase (Método Seguro)
+        const { data: secretos } = await supabaseClient
             .from('secretos')
             .select('valor')
-            .eq('nombre', 'gemini_api_key')
+            .eq('nombre', 'gemini_api_key') // <--- AQUÍ: Buscamos la fila vieja
             .single();
-
-        if (errorSecreto || !secretos) throw new Error("No se pudo obtener la API Key. ¿Estás logueado?");
+            
+        if(secretos) API_KEY = secretos.valor;
         
-        const API_KEY = secretos.valor;
+        // Si no la encuentra, lanza error
+        if(!API_KEY) throw new Error("No encontré la clave en la base de datos.");
 
-        // 2. LLAMAR A GEMINI (Igual que antes, pero con la key recuperada)
-        const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
-        const prompt = `Escribe un dato curioso muy breve (máximo 20 palabras) y divertido sobre: "${nombre}". Tono gastronómico.`;
+        // 2. CONFIGURACIÓN DE GROQ (Llama 3)
+        // Aunque la variable se llame 'gemini', la usamos aquí con Groq
+        const URL = "https://api.groq.com/openai/v1/chat/completions";
+        
+        const prompt = `Escribe un dato curioso muy breve (máximo 20 palabras) y divertido sobre: "${nombre}". Tono gastronómico y alegre.`;
 
+        // 3. PETICIÓN A GROQ
         const res = await fetch(URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_KEY}` // Aquí entra la clave de Groq
+            },
+            body: JSON.stringify({
+                model: "llama3-8b-8192", // Modelo rápido, bueno y gratis
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.7
+            })
         });
-        
+
         const data = await res.json();
-        
+
         if (data.error) {
-            campo.value = "Error API: " + data.error.message;
-        } else if (data.candidates && data.candidates[0].content) {
-            campo.value = data.candidates[0].content.parts[0].text;
+            console.error("Error Groq:", data.error);
+            campo.value = "Error: " + data.error.message;
         } else {
-            campo.value = "No se pudo generar el dato.";
+            // Groq devuelve la respuesta en esta ruta:
+            campo.value = data.choices[0].message.content;
         }
 
     } catch (e) {
         console.error(e);
-        campo.value = "Error: " + e.message;
+        campo.value = "Error de conexión o clave inválida.";
     } finally {
         loader.style.display = "none"; 
         btn.disabled = false;
