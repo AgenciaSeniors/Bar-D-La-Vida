@@ -55,8 +55,8 @@ async function cargarAdmin() {
         cargarOpiniones();
     }
     
-    // Inicializar carga de Visitas
-    cargarVisitas();
+    // NOTA: Se ha eliminado la llamada a cargarVisitas() de aquí.
+    // Ahora se llama desde cambiarVista('visitas')
 }
 
 
@@ -138,7 +138,6 @@ function buscarInventario(e) {
 }
 
 // 3. GENERAR CURIOSIDAD CON IA (AHORA UN GENERADOR DE TEXTO BÁSICO LOCAL)
-
 async function generarCuriosidad() {
     const nombre = document.getElementById('nombre').value;
     const campo = document.getElementById('curiosidad');
@@ -321,97 +320,10 @@ async function eliminarProducto(id) {
     }
 }
 
-// 7. FUNCIONES DE VISITAS (NUEVAS)
-
-// Calcula la fecha de inicio para el filtro (ej. 01 del mes actual)
-function getFechaFiltro(tipo) {
-    const now = new Date();
-    let start;
-
-    switch (tipo) {
-        case 'dia':
-            start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            break;
-        case 'mes':
-            start = new Date(now.getFullYear(), now.getMonth(), 1);
-            break;
-        case 'anual':
-            start = new Date(now.getFullYear(), 0, 1);
-            break;
-        default:
-            return null;
-    }
-    // Formato ISO para Supabase (YYYY-MM-DDTHH:MM:SS)
-    return start.toISOString(); 
-}
-
-async function cargarVisitas() {
-    const elements = {
-        hoy: document.getElementById('stat-hoy'),
-        mes: document.getElementById('stat-mes'),
-        anual: document.getElementById('stat-anual'),
-        total: document.getElementById('stat-total-visitas')
-    };
-
-    // Poner loaders
-    Object.values(elements).forEach(el => {
-        if(el) el.textContent = '...';
-    });
-
-    try {
-        // 1. Total Histórico
-        const { count: totalCount, error: totalError } = await supabaseClient
-            .from('visitas')
-            .select('*', { count: 'exact', head: true });
-
-        if (totalError) throw totalError;
-        if(elements.total) elements.total.textContent = totalCount;
-
-        // 2. Visitas Hoy
-        const startDia = getFechaFiltro('dia');
-        // DEBUG: Muestra la cadena de tiempo que se usa para filtrar
-        console.log("Filtro Hoy (>=):", startDia); 
-        const { count: diaCount, error: diaError } = await supabaseClient
-            .from('visitas')
-            .select('*', { count: 'exact', head: true })
-            .gte('created_at', startDia);
-
-        if (diaError) throw diaError;
-        if(elements.hoy) elements.hoy.textContent = diaCount;
-        
-        // 3. Visitas Mes
-        const startMes = getFechaFiltro('mes');
-        const { count: mesCount, error: mesError } = await supabaseClient
-            .from('visitas')
-            .select('*', { count: 'exact', head: true })
-            .gte('created_at', startMes);
-
-        if (mesError) throw mesError;
-        if(elements.mes) elements.mes.textContent = mesCount;
-
-        // 4. Visitas Año
-        const startAnual = getFechaFiltro('anual');
-        const { count: anualCount, error: anualError } = await supabaseClient
-            .from('visitas')
-            .select('*', { count: 'exact', head: true })
-            .gte('created_at', startAnual);
-
-        if (anualError) throw anualError;
-        if(elements.anual) elements.anual.textContent = anualCount;
-
-    } catch (e) {
-        console.error("Error al cargar estadísticas de visitas:", e.message);
-        Object.values(elements).forEach(el => {
-            if(el) el.textContent = 'Error';
-        });
-    }
-}
-
-
 // Inicializar
 document.addEventListener('DOMContentLoaded', checkAuth);
 
-// --- SISTEMA DE PESTAÑAS ---
+// --- SISTEMA DE PESTAÑAS (CORREGIDO) ---
 function cambiarVista(vistaNombre) {
     // 1. Ocultar todas las secciones
     document.querySelectorAll('.vista-seccion').forEach(el => el.style.display = 'none');
@@ -423,8 +335,8 @@ function cambiarVista(vistaNombre) {
     const vista = document.getElementById(`vista-${vistaNombre}`);
     if(vista) vista.style.display = 'block';
     
-    // Si la vista es 'visitas', recargamos por si acaso
-    if (vistaNombre === 'visitas') {
+    // Si la vista es 'visitas', llamamos a la función del nuevo archivo metrics.js
+    if (vistaNombre === 'visitas' && typeof cargarVisitas === 'function') {
         cargarVisitas();
     }
 
@@ -432,5 +344,5 @@ function cambiarVista(vistaNombre) {
     const botones = document.querySelectorAll('.tab-btn');
     if(vistaNombre === 'inventario') botones[0].classList.add('active');
     if(vistaNombre === 'opiniones') botones[1].classList.add('active');
-    if(vistaNombre === 'visitas') botones[2].classList.add('active'); // Nuevo
+    if(vistaNombre === 'visitas') botones[2].classList.add('active'); 
 }

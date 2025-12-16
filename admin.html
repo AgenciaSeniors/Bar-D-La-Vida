@@ -163,25 +163,46 @@
         <div id="vista-visitas" class="vista-seccion" style="display:none;">
             <div class="reviews-zone">
                 <h3 style="color:white; margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">
-                    📈 Métricas de Visitas
+                    📈 Métricas de Clientes y Tráfico
                 </h3>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <span class="metric-value" id="stat-unique-clients">--</span>
+                        <span class="metric-label">Clientes Únicos Registrados</span>
+                    </div>
+
+                    <div class="metric-card" style="border-color: rgba(0,230,118,0.2);">
+                        <span class="metric-value" id="stat-tasa-retorno">--</span>
+                        <span class="metric-label">Tasa de Retorno (Visitas/Cliente)</span>
+                    </div>
+                </div>
+                
+                <h4 style="color:white; margin-top:30px; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">
+                    Detalle de Tráfico (Visitas al Menú)
+                </h4>
 
                 <div class="metrics-grid" id="visitas-metrics-grid">
                     <div class="metric-card">
                         <span class="metric-value" id="stat-hoy">--</span>
                         <span class="metric-label">Visitas Hoy</span>
+                        <p style="font-size:0.8rem; margin-top:5px; color:#888;">vs Ayer: <span id="comp-hoy-val">...</span></p>
                     </div>
+                    
                     <div class="metric-card">
                         <span class="metric-value" id="stat-mes">--</span>
-                        <span class="metric-label">Este Mes</span>
+                        <span class="metric-label">Visitas Este Mes</span>
+                        <p style="font-size:0.8rem; margin-top:5px; color:#888;">vs Mes Anterior: <span id="comp-mes-val">...</span></p>
                     </div>
+
                     <div class="metric-card">
                         <span class="metric-value" id="stat-anual">--</span>
-                        <span class="metric-label">Este Año</span>
+                        <span class="metric-label">Visitas Este Año</span>
                     </div>
-                    <div class="metric-card" style="border-color: rgba(0,230,118,0.2);">
+
+                    <div class="metric-card" style="border-color: rgba(255,255,255,0.2);">
                         <span class="metric-value" id="stat-total-visitas">--</span>
-                        <span class="metric-label">Total Histórico</span>
+                        <span class="metric-label">Total Histórico (Visitas)</span>
                     </div>
                 </div>
                 
