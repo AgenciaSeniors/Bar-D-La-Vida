@@ -57,6 +57,75 @@ function calcularComparacion(actual, anterior) {
 
 
 /**
+ * Función para cargar y mostrar la lista de los clientes más frecuentes (TOP 5).
+ * Requiere RLS SELECT en 'visitas' y 'clientes'.
+ */
+async function cargarTopClientes() {
+    const listContainer = document.getElementById('top-clientes-list');
+    if (!listContainer) return;
+    
+    listContainer.innerHTML = '<p style="text-align:center; color:#666; padding:15px;">Analizando fidelidad...</p>';
+
+    try {
+        // Obtenemos todas las visitas, incluyendo el nombre y teléfono del cliente
+        const { data: topClients, error } = await supabaseClient
+            .from('visitas')
+            .select(`
+                cliente_id,
+                clientes (nombre, telefono)
+            `);
+            
+        if (error) throw error;
+        
+        if (!topClients || topClients.length === 0) {
+             listContainer.innerHTML = '<p style="text-align:center; color:#666; padding:15px;">No hay visitas registradas para analizar.</p>';
+             return;
+        }
+
+        // 1. Contar y agrupar visitas localmente
+        const clientVisits = {};
+        topClients.forEach(v => {
+            const id = v.cliente_id;
+            const name = v.clientes ? v.clientes.nombre : 'Anónimo';
+            const phone = v.clientes ? v.clientes.telefono : '';
+            
+            if (!clientVisits[id]) {
+                clientVisits[id] = { name: name, phone: phone, count: 0 };
+            }
+            clientVisits[id].count++;
+        });
+
+        // 2. Convertir a array y ordenar por count (descendente)
+        const sortedClients = Object.values(clientVisits)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5); // Tomamos el TOP 5
+
+        // 3. Renderizar
+        const html = sortedClients.map((client, index) => {
+            const rankIcon = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : '✨';
+            
+            return `
+                <div class="inventory-item" style="border-left: 3px solid ${index === 0 ? 'var(--gold)' : '#333'};">
+                    <span style="font-size:1.5rem; width: 30px; text-align:center;">${rankIcon}</span>
+                    <div class="item-meta">
+                        <span class="item-title">${client.name}</span>
+                        <span class="item-price" style="color: var(--green-success);">${client.count} Visitas</span>
+                    </div>
+                    <span style="color:#888; font-size:0.85rem;">Tel: ${client.phone || 'N/A'}</span>
+                </div>
+            `;
+        }).join('');
+
+        listContainer.innerHTML = html;
+
+    } catch (e) {
+        console.error("Error cargando Top Clientes (RLS?):", e.message);
+        listContainer.innerHTML = `<p style="text-align:center; color:var(--red-danger); padding:15px;">Error al cargar Top Clientes. (RLS: ¿Permite SELECT en 'visitas' y 'clientes'?) Mensaje: ${e.message}</p>`;
+    }
+}
+
+
+/**
  * Función principal para cargar todas las métricas de visitas y clientes.
  * Debe ser llamada cuando se abre la pestaña 'visitas'.
  */
@@ -137,6 +206,9 @@ async function cargarVisitas() {
             elements.compMes.textContent = compMes.text;
             elements.compMes.style.color = compMes.color;
         }
+        
+        // --- 4. Cargar Top Clientes ---
+        cargarTopClientes();
 
 
     } catch (e) {
@@ -145,5 +217,6 @@ async function cargarVisitas() {
         Object.values(elements).forEach(el => {
             if(el) el.textContent = 'Error';
         });
+        document.getElementById('top-clientes-list').innerHTML = `<p style="text-align:center; color:var(--red-danger); padding:15px;">Error de acceso: Asegúrate que RLS permite SELECT en 'visitas' y 'clientes'.</p>`;
     }
 }
