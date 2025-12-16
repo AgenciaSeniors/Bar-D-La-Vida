@@ -96,6 +96,8 @@ async function cargarAdmin() {
 }
 
 // 3. GENERAR CURIOSIDAD CON IA (CORREGIDO)
+// admin.js - VERSIÓN CON CLAVE EN BASE DE DATOS
+
 async function generarCuriosidad() {
     const nombre = document.getElementById('nombre').value;
     const campo = document.getElementById('curiosidad');
@@ -106,33 +108,44 @@ async function generarCuriosidad() {
 
     btn.disabled = true; 
     loader.style.display = "inline-block"; 
-    campo.value = "Generando...";
-
-    const API_KEY = CONFIG.GEMINI_KEY; 
-    // CORRECCIÓN: Usamos el modelo 'gemini-2.5-flash' que confirmamos que tienes disponible
-    const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
-    
-    const prompt = `Escribe un dato curioso muy breve (máximo 20 palabras) y divertido sobre: "${nombre}". Tono gastronómico.`;
+    campo.value = "Buscando llave y generando...";
 
     try {
+        // 1. OBTENER LA API KEY DESDE SUPABASE (Seguro)
+        // Solo funcionará si el usuario ha iniciado sesión (gracias a RLS)
+        const { data: secretos, error: errorSecreto } = await supabaseClient
+            .from('secretos')
+            .select('valor')
+            .eq('nombre', 'gemini_api_key')
+            .single();
+
+        if (errorSecreto || !secretos) throw new Error("No se pudo obtener la API Key. ¿Estás logueado?");
+        
+        const API_KEY = secretos.valor;
+
+        // 2. LLAMAR A GEMINI (Igual que antes, pero con la key recuperada)
+        const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+        const prompt = `Escribe un dato curioso muy breve (máximo 20 palabras) y divertido sobre: "${nombre}". Tono gastronómico.`;
+
         const res = await fetch(URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
+        
         const data = await res.json();
         
         if (data.error) {
-            console.error("Error API:", data.error);
-            campo.value = "Error: " + data.error.message;
+            campo.value = "Error API: " + data.error.message;
         } else if (data.candidates && data.candidates[0].content) {
             campo.value = data.candidates[0].content.parts[0].text;
         } else {
             campo.value = "No se pudo generar el dato.";
         }
+
     } catch (e) {
         console.error(e);
-        campo.value = "Error de conexión.";
+        campo.value = "Error: " + e.message;
     } finally {
         loader.style.display = "none"; 
         btn.disabled = false;
