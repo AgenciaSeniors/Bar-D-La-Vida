@@ -286,3 +286,23 @@ async function eliminarProducto(id) {
 
 // Inicializar
 document.addEventListener('DOMContentLoaded', checkAuth);
+
+// --- SISTEMA DE PESTAÑAS ---
+function cambiarVista(vistaNombre) {
+    // 1. Ocultar todas las secciones
+    document.querySelectorAll('.vista-seccion').forEach(el => el.style.display = 'none');
+    
+    // 2. Quitar clase 'active' de todos los botones
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+    // 3. Mostrar la seleccionada
+    const vista = document.getElementById(`vista-${vistaNombre}`);
+    if(vista) vista.style.display = 'block';
+
+    // 4. Activar el botón correspondiente (Truco visual)
+    // Buscamos el botón que contiene el texto o ícono correcto y le ponemos 'active'
+    // O más fácil: pasamos el evento 'this' en el onclick, pero por ahora lo haremos simple:
+    const botones = document.querySelectorAll('.tab-btn');
+    if(vistaNombre === 'inventario') botones[0].classList.add('active');
+    if(vistaNombre === 'opiniones') botones[1].classList.add('active');
+}
