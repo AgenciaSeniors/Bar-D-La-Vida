@@ -9,14 +9,14 @@ async function cargarOpiniones() {
 
     grid.innerHTML = '<p style="text-align:center; color:#666; grid-column:1/-1;">Cargando feedback...</p>';
 
-    // Pedimos opiniones CON el nombre y foto del producto (Join)
+    // CAMBIOS: 
     const { data, error } = await supabaseClient
         .from('opiniones')
         .select(`
-            id, puntuacion, comentario, cliente_nombre, cliente_email, created_at,
-            productos!opiniones_producto_id_fkey ( nombre, imagen_url )
+            id, puntuacion, comentario, cliente_nombre, created_at,
+            productos!fk_opiniones_productos ( nombre, imagen_url )
         `)
-                .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
     if(error) { 
         console.error("Error cargando opiniones:", error);
