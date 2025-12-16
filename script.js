@@ -199,7 +199,7 @@ function abrirDetalle(id) {
     const ratingBig = productoActual.ratingPromedio ? `★ ${productoActual.ratingPromedio}` : '★ --';
     setText('det-rating-big', ratingBig);
 
-    // Manejo de curiosidad
+    // Manejo de curiosidad (CORREGIDO: Se muestra correctamente aquí)
     if (productoActual.curiosidad && productoActual.curiosidad.length > 5) {
         if(box) box.style.display = "block";
         setText('det-curiosidad', productoActual.curiosidad);

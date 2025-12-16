@@ -1,6 +1,7 @@
 // admin.js COMPLETO Y CORREGIDO
 
 let inventarioGlobal = []; // Almacena los productos cargados para poder editarlos
+let searchTimeout; // Para el debounce del buscador
 
 // 1. VERIFICACIÓN DE SEGURIDAD
 async function checkAuth() {
@@ -21,7 +22,7 @@ async function cerrarSesion() {
     window.location.href = "login.html";
 }
 
-// 2. CARGAR INVENTARIO
+// 2. CARGAR INVENTARIO (Ahora solo carga y llama a renderizar)
 async function cargarAdmin() {
     const lista = document.getElementById('lista-admin');
     if (lista) lista.innerHTML = '<div style="text-align:center; padding:40px; color:#aaa;">⟳ Cargando inventario...</div>';
@@ -38,15 +39,40 @@ async function cargarAdmin() {
         return; 
     }
     
-    // Guardamos en variable global para usar al editar
+    // Guardamos en variable global para usar al editar y buscar
     inventarioGlobal = productos || [];
 
-    if (!productos || productos.length === 0) {
-        if (lista) lista.innerHTML = '<p style="text-align:center; padding:20px; color:#888;">El inventario está vacío.<br><small>Añade tu primer producto a la izquierda.</small></p>';
+    // Renderizamos la lista completa
+    renderizarInventario(inventarioGlobal);
+
+    // 3. AGREGAR LISTENER AL BUSCADOR
+    const searchInput = document.getElementById('search-inventory');
+    if (searchInput) {
+        searchInput.addEventListener('input', buscarInventario);
+    }
+
+    if (typeof cargarOpiniones === "function") {
+        cargarOpiniones();
+    }
+}
+
+
+/**
+ * RENDERIZA EL INVENTARIO EN EL ADMIN PANEL
+ * @param {Array} lista - Lista de productos a renderizar.
+ */
+function renderizarInventario(lista) {
+    const listaContainer = document.getElementById('lista-admin');
+    if (!listaContainer) return;
+    
+    listaContainer.innerHTML = '';
+
+    if (!lista || lista.length === 0) {
+        listaContainer.innerHTML = '<p style="text-align:center; padding:20px; color:#888;">No hay productos que coincidan con la búsqueda.</p>';
         return;
     }
 
-    const html = productos.map(item => {
+    const html = lista.map(item => {
         const esAgotado = item.estado === 'agotado';
         const statusText = esAgotado ? 'AGOTADO' : 'DISPONIBLE';
         const statusClass = esAgotado ? 'status-bad' : 'status-ok';
@@ -88,14 +114,28 @@ async function cargarAdmin() {
         `;
     }).join('');
 
-    if (lista) lista.innerHTML = html;
-
-    if (typeof cargarOpiniones === "function") {
-        cargarOpiniones();
-    }
+    listaContainer.innerHTML = html;
 }
 
-// 3. GENERAR CURIOSIDAD CON IA (AHORA UN GENERADOR DE TEXTO BÁSICO LOCAL)
+/**
+ * Función de búsqueda con 'debounce' (retraso para evitar llamadas excesivas)
+ */
+function buscarInventario(e) {
+    clearTimeout(searchTimeout);
+    const term = e.target.value.toLowerCase();
+
+    searchTimeout = setTimeout(() => {
+        const listaFiltrada = inventarioGlobal.filter(p => 
+            p.nombre.toLowerCase().includes(term) || 
+            (p.descripcion && p.descripcion.toLowerCase().includes(term)) ||
+            (p.categoria && p.categoria.toLowerCase().includes(term))
+        );
+        renderizarInventario(listaFiltrada);
+    }, 300); // Espera 300ms después de la última pulsación
+}
+
+
+// 4. GENERAR CURIOSIDAD CON IA (AHORA UN GENERADOR DE TEXTO BÁSICO LOCAL)
 
 async function generarCuriosidad() {
     const nombre = document.getElementById('nombre').value;
@@ -118,7 +158,7 @@ async function generarCuriosidad() {
     // --- LÓGICA DE GENERADOR DE TEXTO BÁSICO ---
     const curiosidades = [
         `Sabías que el plato original de '${nombre}' se inventó en la época de la posguerra.`,
-        `Este plato, el '${nombre}', tiene su origen en la región oriental del país.`,
+        `Este plato, el '${nombre}' tiene su origen en la región oriental del país.`,
         `La clave para el sabor único de '${nombre}' está en el reposo de su ingrediente principal.`,
         `Se dice que '${nombre}' era el plato favorito de un famoso escritor del siglo pasado.`,
         `El '${nombre}' es un clásico que se ha mantenido en nuestro menú desde el día uno.`,
@@ -134,7 +174,7 @@ async function generarCuriosidad() {
     loader.style.display = "none"; 
     btn.disabled = false;
 }
-// 4. FUNCIONES DE EDICIÓN (NUEVAS)
+// 5. FUNCIONES DE EDICIÓN (NUEVAS)
 function prepararEdicion(id) {
     const producto = inventarioGlobal.find(p => p.id === id);
     if (!producto) return;
@@ -164,7 +204,7 @@ function cancelarEdicion() {
     document.getElementById('btn-cancelar').style.display = "none";
 }
 
-// 5. GUARDAR O ACTUALIZAR PRODUCTO
+// 6. GUARDAR O ACTUALIZAR PRODUCTO
 const form = document.getElementById('form-producto');
 if(form) {
     form.addEventListener('submit', async (e) => {
@@ -259,7 +299,7 @@ if(form) {
     });
 }
 
-// 6. ACCIONES RÁPIDAS (Switch, Estrella, Borrar)
+// 7. ACCIONES RÁPIDAS (Switch, Estrella, Borrar)
 async function toggleDestacado(id, valorActual) {
     await supabaseClient.from('productos').update({ destacado: !valorActual }).eq('id', id);
     cargarAdmin();
@@ -295,7 +335,6 @@ function cambiarVista(vistaNombre) {
     if(vista) vista.style.display = 'block';
 
     // 4. Activar el botón correspondiente (Truco visual)
-    // Buscamos el botón que contiene el texto o ícono correcto y le ponemos 'active'
     const botones = document.querySelectorAll('.tab-btn');
     if(vistaNombre === 'inventario') botones[0].classList.add('active');
     if(vistaNombre === 'opiniones') botones[1].classList.add('active');
