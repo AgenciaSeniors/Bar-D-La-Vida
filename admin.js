@@ -97,6 +97,8 @@ async function cargarAdmin() {
 
 // 3. GENERAR CURIOSIDAD CON IA (CORREGIDO)
 
+// admin.js - LLAMA A LA EDGE FUNCTION DESPLEGADA MANUALMENTE
+
 async function generarCuriosidad() {
     const nombre = document.getElementById('nombre').value;
     const campo = document.getElementById('curiosidad');
@@ -107,58 +109,38 @@ async function generarCuriosidad() {
 
     btn.disabled = true; 
     loader.style.display = "inline-block"; 
-    campo.value = "Consultando a la IA..."; 
+    campo.value = "Consultando a DeepSeek vía Supabase..."; 
+
+    // Usamos la URL base del config.js para construir el endpoint
+    const EDGE_FUNCTION_URL = `${CONFIG.SUPABASE_URL}/functions/v1/generar-curiosidad`;
 
     try {
-        // 1. RECUPERAR LA CLAVE DE SUPABASE
-        let API_KEY = '';
-        const { data: secretos, error } = await supabaseClient
-            .from('secretos')
-            .select('valor')
-            .eq('nombre', 'gemini_api_key') 
-            .single();
-            
-        if(error || !secretos) throw new Error("No se encontró la API Key en Supabase.");
-        API_KEY = secretos.valor;
-
-        // 2. PETICIÓN A DEEPSEEK (China - No VPN)
-        const response = await fetch("https://api.deepseek.com/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${API_KEY}`
+        // Llama a la Edge Function
+        const res = await fetch(EDGE_FUNCTION_URL, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                model: "deepseek-chat", // Modelo V3 oficial
-                messages: [
-                    { 
-                        role: "system", 
-                        content: "Eres un experto gastronómico copywriter. Escribe descripciones cortas, apetitosas y con un dato curioso histórico." 
-                    },
-                    { 
-                        role: "user", 
-                        content: `Escribe un dato curioso breve (máximo 25 palabras) y divertido sobre: "${nombre}". Tono cubano y alegre.` 
-                    }
-                ],
-                temperature: 1.0
-            })
+            body: JSON.stringify({ nombre: nombre }) 
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error?.message || "Error en la API");
+        if (!res.ok) {
+             const errorData = await res.json();
+             // La Edge Function devuelve el error de DeepSeek o el propio
+             throw new Error(errorData.error || `Error HTTP ${res.status}`);
         }
 
-        const data = await response.json();
-        campo.value = data.choices[0].message.content;
+        const data = await res.json();
+
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        campo.value = data.curiosidad;
 
     } catch (e) {
-        console.error(e);
-        campo.value = "Error: " + e.message;
-        // Si es error de CORS, sugerirá usar la Opción B
-        if(e.message.includes("Failed to fetch")) {
-             alert("Posible bloqueo de red o CORS. Intenta la Opción B (SiliconFlow).");
-        }
+        console.error("Error Edge Function:", e);
+        campo.value = `Error: ${e.message}. Verifica que la función esté DESPLEGADA y que la clave DeepSeek sea correcta.`;
     } finally {
         loader.style.display = "none"; 
         btn.disabled = false;
