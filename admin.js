@@ -89,6 +89,10 @@ async function cargarAdmin() {
     }).join('');
 
     if (lista) lista.innerHTML = html;
+
+    if (typeof cargarOpiniones === "function") {
+        cargarOpiniones();
+    }
 }
 
 // 3. GENERAR CURIOSIDAD CON IA (CORREGIDO)
