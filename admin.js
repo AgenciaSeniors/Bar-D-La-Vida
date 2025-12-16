@@ -96,8 +96,6 @@ async function cargarAdmin() {
 }
 
 // 3. GENERAR CURIOSIDAD CON IA (CORREGIDO)
-// admin.js - VERSIÓN CON CLAVE EN BASE DE DATOS
-// admin.js - VERSIÓN DEEPSEEK (Funciona en Cuba sin VPN)
 
 async function generarCuriosidad() {
     const nombre = document.getElementById('nombre').value;
@@ -109,52 +107,58 @@ async function generarCuriosidad() {
 
     btn.disabled = true; 
     loader.style.display = "inline-block"; 
-    campo.value = "DeepSeek está pensando..."; // Mensaje de carga
+    campo.value = "Consultando a la IA..."; 
 
     try {
-        // 1. RECUPERAR LA CLAVE (Desde Supabase)
+        // 1. RECUPERAR LA CLAVE DE SUPABASE
         let API_KEY = '';
-        const { data: secretos } = await supabaseClient
+        const { data: secretos, error } = await supabaseClient
             .from('secretos')
             .select('valor')
-            .eq('nombre', 'gemini_api_key') // Seguimos reciclando el nombre para no cambiar la BD
+            .eq('nombre', 'gemini_api_key') 
             .single();
             
-        if(secretos) API_KEY = secretos.valor;
-        if(!API_KEY) throw new Error("No encontré la clave en la base de datos.");
+        if(error || !secretos) throw new Error("No se encontró la API Key en Supabase.");
+        API_KEY = secretos.valor;
 
-        // 2. CONFIGURACIÓN DE DEEPSEEK
-        // URL oficial de la API de DeepSeek
-        const URL = "https://api.deepseek.com/chat/completions";
-        
-        const prompt = `Escribe un dato curioso e historico muy breve (máximo 20 palabras) y divertido sobre: "${nombre}". Tono gastronómico y alegre.`;
-
-        // 3. PETICIÓN A DEEPSEEK
-        const res = await fetch(URL, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_KEY}`
+        // 2. PETICIÓN A DEEPSEEK (China - No VPN)
+        const response = await fetch("https://api.deepseek.com/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${API_KEY}`
             },
             body: JSON.stringify({
-                model: "deepseek-chat", // Este es el modelo V3 (rápido y bueno)
-                messages: [{ role: "user", content: prompt }],
-                temperature: 0.7
+                model: "deepseek-chat", // Modelo V3 oficial
+                messages: [
+                    { 
+                        role: "system", 
+                        content: "Eres un experto gastronómico copywriter. Escribe descripciones cortas, apetitosas y con un dato curioso histórico." 
+                    },
+                    { 
+                        role: "user", 
+                        content: `Escribe un dato curioso breve (máximo 25 palabras) y divertido sobre: "${nombre}". Tono cubano y alegre.` 
+                    }
+                ],
+                temperature: 1.0
             })
         });
 
-        const data = await res.json();
-
-        if (data.error) {
-            console.error("Error DeepSeek:", data.error);
-            campo.value = "Error: " + data.error.message;
-        } else {
-            campo.value = data.choices[0].message.content;
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || "Error en la API");
         }
+
+        const data = await response.json();
+        campo.value = data.choices[0].message.content;
 
     } catch (e) {
         console.error(e);
-        campo.value = "Error de conexión. Verifica tu internet.";
+        campo.value = "Error: " + e.message;
+        // Si es error de CORS, sugerirá usar la Opción B
+        if(e.message.includes("Failed to fetch")) {
+             alert("Posible bloqueo de red o CORS. Intenta la Opción B (SiliconFlow).");
+        }
     } finally {
         loader.style.display = "none"; 
         btn.disabled = false;
