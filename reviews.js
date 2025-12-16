@@ -14,9 +14,9 @@ async function cargarOpiniones() {
         .from('opiniones')
         .select(`
             id, puntuacion, comentario, cliente_nombre, cliente_email, created_at,
-            productos!fk_opiniones_productos ( nombre, imagen_url )
-            `)
-        .order('created_at', { ascending: false });
+            productos!opiniones_producto_id_fkey ( nombre, imagen_url )
+        `)
+                .order('created_at', { ascending: false });
 
     if(error) { 
         console.error("Error cargando opiniones:", error);
