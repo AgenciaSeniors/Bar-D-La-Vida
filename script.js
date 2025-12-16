@@ -1,5 +1,89 @@
-// --- script.js CORREGIDO ---
+// --- LÓGICA DE BIENVENIDA ---
 
+// Se ejecuta apenas carga la página
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Cargamos el menú
+    cargarMenu(); 
+
+    // 2. Verificamos si ya conocemos al cliente
+    const yaRegistrado = localStorage.getItem('cliente_id');
+    
+    if (!yaRegistrado) {
+        // Si es nuevo, mostramos el modal con un pequeño delay elegante
+        setTimeout(() => {
+            const modal = document.getElementById('modal-welcome');
+            if(modal) {
+                modal.style.display = 'flex';
+                // Pequeño truco para activar la animación CSS
+                setTimeout(() => modal.classList.add('active'), 50);
+            }
+        }, 1500); // 1.5 segundos de espera para que vea el fondo primero
+    }
+});
+
+function cerrarWelcome() {
+    const modal = document.getElementById('modal-welcome');
+    modal.classList.remove('active');
+    setTimeout(() => modal.style.display = 'none', 400);
+}
+
+async function registrarBienvenida() {
+    const nombre = document.getElementById('welcome-nombre').value;
+    const telefono = document.getElementById('welcome-phone').value;
+    const btn = document.querySelector('#modal-welcome button');
+
+    if (!nombre || !telefono) {
+        alert("Por favor completa los datos para brindarte mejor servicio 🙏");
+        return;
+    }
+
+    btn.textContent = "Ingresando..."; btn.disabled = true;
+
+    try {
+        // 1. Buscar si ya existe el cliente por teléfono
+        let { data: cliente, error } = await supabaseClient
+            .from('clientes')
+            .select('id')
+            .eq('telefono', telefono)
+            .single();
+
+        let clienteId;
+
+        // 2. Si no existe, lo creamos
+        if (!cliente) {
+            const { data: nuevo, error: errCrear } = await supabaseClient
+                .from('clientes')
+                .insert([{ nombre, telefono }])
+                .select()
+                .single();
+            
+            if (errCrear) throw errCrear;
+            clienteId = nuevo.id;
+        } else {
+            clienteId = cliente.id;
+            // Opcional: Podríamos actualizar el nombre si cambió
+        }
+
+        // 3. Registramos la visita
+        await supabaseClient.from('visitas').insert([{
+            cliente_id: clienteId,
+            motivo: 'Ingreso Menú'
+        }]);
+
+        // 4. Guardamos en el celular para no volver a pedirlo
+        localStorage.setItem('cliente_id', clienteId);
+        localStorage.setItem('cliente_nombre', nombre);
+
+        // 5. Cerrar y saludar
+        cerrarWelcome();
+        alert(`¡Bienvenido, ${nombre}! Disfruta la noche.`);
+
+    } catch (err) {
+        console.error("Error registro:", err);
+        alert("Ocurrió un error, pero puedes pasar.");
+        cerrarWelcome();
+    }
+}
 let searchTimeout;
 let todosLosProductos = [];
 let productoActual = null;
