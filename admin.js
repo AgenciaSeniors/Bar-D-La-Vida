@@ -369,6 +369,8 @@ async function cargarVisitas() {
 
         // 2. Visitas Hoy
         const startDia = getFechaFiltro('dia');
+        // DEBUG: Muestra la cadena de tiempo que se usa para filtrar
+        console.log("Filtro Hoy (>=):", startDia); 
         const { count: diaCount, error: diaError } = await supabaseClient
             .from('visitas')
             .select('*', { count: 'exact', head: true })
