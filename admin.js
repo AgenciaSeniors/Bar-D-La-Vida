@@ -95,9 +95,7 @@ async function cargarAdmin() {
     }
 }
 
-// 3. GENERAR CURIOSIDAD CON IA (CORREGIDO)
-
-// admin.js - LLAMA A LA EDGE FUNCTION DESPLEGADA MANUALMENTE
+// 3. GENERAR CURIOSIDAD CON IA (AHORA UN GENERADOR DE TEXTO BÁSICO LOCAL)
 
 async function generarCuriosidad() {
     const nombre = document.getElementById('nombre').value;
@@ -105,46 +103,36 @@ async function generarCuriosidad() {
     const loader = document.getElementById('loader-ia');
     const btn = document.getElementById('btn-ia');
 
-    if (!nombre) { alert("Escribe el nombre del producto primero."); return; }
+    if (!nombre) { 
+        alert("Escribe el nombre del producto primero."); 
+        return; 
+    }
 
     btn.disabled = true; 
     loader.style.display = "inline-block"; 
-    campo.value = "Consultando a DeepSeek vía Supabase..."; 
+    campo.value = "Generando dato curioso simple...";
 
-    // Usamos la URL base del config.js para construir el endpoint
-    const EDGE_FUNCTION_URL = `${CONFIG.SUPABASE_URL}/functions/v1/generar-curiosidad`;
+    // Simulamos la espera para dar una sensación de "carga"
+    await new Promise(resolve => setTimeout(resolve, 800)); 
 
-    try {
-        // Llama a la Edge Function
-        const res = await fetch(EDGE_FUNCTION_URL, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ nombre: nombre }) 
-        });
+    // --- LÓGICA DE GENERADOR DE TEXTO BÁSICO ---
+    const curiosidades = [
+        `Sabías que el plato original de '${nombre}' se inventó en la época de la posguerra.`,
+        `Este plato, el '${nombre}', tiene su origen en la región oriental del país.`,
+        `La clave para el sabor único de '${nombre}' está en el reposo de su ingrediente principal.`,
+        `Se dice que '${nombre}' era el plato favorito de un famoso escritor del siglo pasado.`,
+        `El '${nombre}' es un clásico que se ha mantenido en nuestro menú desde el día uno.`,
+        `Nuestro chef recomienda maridar el '${nombre}' con un vino tinto de la casa.`
+    ];
 
-        if (!res.ok) {
-             const errorData = await res.json();
-             // La Edge Function devuelve el error de DeepSeek o el propio
-             throw new Error(errorData.error || `Error HTTP ${res.status}`);
-        }
+    // Selecciona una curiosidad al azar
+    const indice = Math.floor(Math.random() * curiosidades.length);
+    campo.value = curiosidades[indice];
+    // --- FIN LÓGICA BÁSICA ---
 
-        const data = await res.json();
 
-        if (data.error) {
-            throw new Error(data.error);
-        }
-
-        campo.value = data.curiosidad;
-
-    } catch (e) {
-        console.error("Error Edge Function:", e);
-        campo.value = `Error: ${e.message}. Verifica que la función esté DESPLEGADA y que la clave DeepSeek sea correcta.`;
-    } finally {
-        loader.style.display = "none"; 
-        btn.disabled = false;
-    }
+    loader.style.display = "none"; 
+    btn.disabled = false;
 }
 // 4. FUNCIONES DE EDICIÓN (NUEVAS)
 function prepararEdicion(id) {
@@ -308,7 +296,6 @@ function cambiarVista(vistaNombre) {
 
     // 4. Activar el botón correspondiente (Truco visual)
     // Buscamos el botón que contiene el texto o ícono correcto y le ponemos 'active'
-    // O más fácil: pasamos el evento 'this' en el onclick, pero por ahora lo haremos simple:
     const botones = document.querySelectorAll('.tab-btn');
     if(vistaNombre === 'inventario') botones[0].classList.add('active');
     if(vistaNombre === 'opiniones') botones[1].classList.add('active');
