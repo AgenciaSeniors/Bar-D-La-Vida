@@ -54,6 +54,9 @@ async function cargarAdmin() {
     if (typeof cargarOpiniones === "function") {
         cargarOpiniones();
     }
+    
+    // Inicializar carga de Visitas
+    cargarVisitas();
 }
 
 
@@ -134,8 +137,7 @@ function buscarInventario(e) {
     }, 300); // Espera 300ms después de la última pulsación
 }
 
-
-// 4. GENERAR CURIOSIDAD CON IA (AHORA UN GENERADOR DE TEXTO BÁSICO LOCAL)
+// 3. GENERAR CURIOSIDAD CON IA (AHORA UN GENERADOR DE TEXTO BÁSICO LOCAL)
 
 async function generarCuriosidad() {
     const nombre = document.getElementById('nombre').value;
@@ -174,7 +176,7 @@ async function generarCuriosidad() {
     loader.style.display = "none"; 
     btn.disabled = false;
 }
-// 5. FUNCIONES DE EDICIÓN (NUEVAS)
+// 4. FUNCIONES DE EDICIÓN (NUEVAS)
 function prepararEdicion(id) {
     const producto = inventarioGlobal.find(p => p.id === id);
     if (!producto) return;
@@ -204,7 +206,7 @@ function cancelarEdicion() {
     document.getElementById('btn-cancelar').style.display = "none";
 }
 
-// 6. GUARDAR O ACTUALIZAR PRODUCTO
+// 5. GUARDAR O ACTUALIZAR PRODUCTO
 const form = document.getElementById('form-producto');
 if(form) {
     form.addEventListener('submit', async (e) => {
@@ -299,7 +301,7 @@ if(form) {
     });
 }
 
-// 7. ACCIONES RÁPIDAS (Switch, Estrella, Borrar)
+// 6. ACCIONES RÁPIDAS (Switch, Estrella, Borrar)
 async function toggleDestacado(id, valorActual) {
     await supabaseClient.from('productos').update({ destacado: !valorActual }).eq('id', id);
     cargarAdmin();
@@ -319,6 +321,91 @@ async function eliminarProducto(id) {
     }
 }
 
+// 7. FUNCIONES DE VISITAS (NUEVAS)
+
+// Calcula la fecha de inicio para el filtro (ej. 01 del mes actual)
+function getFechaFiltro(tipo) {
+    const now = new Date();
+    let start;
+
+    switch (tipo) {
+        case 'dia':
+            start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+        case 'mes':
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            break;
+        case 'anual':
+            start = new Date(now.getFullYear(), 0, 1);
+            break;
+        default:
+            return null;
+    }
+    // Formato ISO para Supabase (YYYY-MM-DDTHH:MM:SS)
+    return start.toISOString(); 
+}
+
+async function cargarVisitas() {
+    const elements = {
+        hoy: document.getElementById('stat-hoy'),
+        mes: document.getElementById('stat-mes'),
+        anual: document.getElementById('stat-anual'),
+        total: document.getElementById('stat-total-visitas')
+    };
+
+    // Poner loaders
+    Object.values(elements).forEach(el => {
+        if(el) el.textContent = '...';
+    });
+
+    try {
+        // 1. Total Histórico
+        const { count: totalCount, error: totalError } = await supabaseClient
+            .from('visitas')
+            .select('*', { count: 'exact', head: true });
+
+        if (totalError) throw totalError;
+        if(elements.total) elements.total.textContent = totalCount;
+
+        // 2. Visitas Hoy
+        const startDia = getFechaFiltro('dia');
+        const { count: diaCount, error: diaError } = await supabaseClient
+            .from('visitas')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', startDia);
+
+        if (diaError) throw diaError;
+        if(elements.hoy) elements.hoy.textContent = diaCount;
+        
+        // 3. Visitas Mes
+        const startMes = getFechaFiltro('mes');
+        const { count: mesCount, error: mesError } = await supabaseClient
+            .from('visitas')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', startMes);
+
+        if (mesError) throw mesError;
+        if(elements.mes) elements.mes.textContent = mesCount;
+
+        // 4. Visitas Año
+        const startAnual = getFechaFiltro('anual');
+        const { count: anualCount, error: anualError } = await supabaseClient
+            .from('visitas')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', startAnual);
+
+        if (anualError) throw anualError;
+        if(elements.anual) elements.anual.textContent = anualCount;
+
+    } catch (e) {
+        console.error("Error al cargar estadísticas de visitas:", e.message);
+        Object.values(elements).forEach(el => {
+            if(el) el.textContent = 'Error';
+        });
+    }
+}
+
+
 // Inicializar
 document.addEventListener('DOMContentLoaded', checkAuth);
 
@@ -333,9 +420,15 @@ function cambiarVista(vistaNombre) {
     // 3. Mostrar la seleccionada
     const vista = document.getElementById(`vista-${vistaNombre}`);
     if(vista) vista.style.display = 'block';
+    
+    // Si la vista es 'visitas', recargamos por si acaso
+    if (vistaNombre === 'visitas') {
+        cargarVisitas();
+    }
 
     // 4. Activar el botón correspondiente (Truco visual)
     const botones = document.querySelectorAll('.tab-btn');
     if(vistaNombre === 'inventario') botones[0].classList.add('active');
     if(vistaNombre === 'opiniones') botones[1].classList.add('active');
+    if(vistaNombre === 'visitas') botones[2].classList.add('active'); // Nuevo
 }

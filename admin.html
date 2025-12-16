@@ -34,6 +34,9 @@
         <button class="tab-btn" onclick="cambiarVista('opiniones')">
             <span class="material-icons">reviews</span> Opiniones
         </button>
+        <button class="tab-btn" onclick="cambiarVista('visitas')">
+            <span class="material-icons">trending_up</span> Visitas
+        </button>
     </div>
 
     <main class="admin-content">
@@ -117,6 +120,7 @@
                         <span class="material-icons" style="position:absolute; left:10px; top:13px; color:#888; font-size:1.2rem;">search</span>
                         <input type="text" id="search-inventory" placeholder="Buscar por nombre, descripción o categoría..." class="input-stylish" style="width:100%; padding:12px 10px 12px 35px; border-radius: 8px;">
                     </div>
+                    
                     <div id="lista-admin" class="inventory-list">
                         </div>
                 </div>
@@ -156,7 +160,38 @@
             </div>
         </div>
 
-    </main>
+        <div id="vista-visitas" class="vista-seccion" style="display:none;">
+            <div class="reviews-zone">
+                <h3 style="color:white; margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">
+                    📈 Métricas de Visitas
+                </h3>
+
+                <div class="metrics-grid" id="visitas-metrics-grid">
+                    <div class="metric-card">
+                        <span class="metric-value" id="stat-hoy">--</span>
+                        <span class="metric-label">Visitas Hoy</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-value" id="stat-mes">--</span>
+                        <span class="metric-label">Este Mes</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-value" id="stat-anual">--</span>
+                        <span class="metric-label">Este Año</span>
+                    </div>
+                    <div class="metric-card" style="border-color: rgba(0,230,118,0.2);">
+                        <span class="metric-value" id="stat-total-visitas">--</span>
+                        <span class="metric-label">Total Histórico</span>
+                    </div>
+                </div>
+                
+                <p style="color:#888; font-size:0.8rem; margin-top:30px; text-align:center;">
+                    * Las visitas se registran cuando un cliente se identifica por primera vez o al cargar el menú.
+                </p>
+                
+            </div>
+        </div>
+        </main>
 
     <script src="admin.js"></script>
     <script src="reviews.js"></script>
