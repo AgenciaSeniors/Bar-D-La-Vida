@@ -142,7 +142,7 @@ async function generarCuriosidad() {
                 'Authorization': `Bearer ${API_KEY}` // Aquí entra la clave de Groq
             },
             body: JSON.stringify({
-                model: "llama3-8b-8192", // Modelo rápido, bueno y gratis
+                model: "moonshotai/kimi-k2-instruct-0905", // Modelo rápido, bueno y gratis
                 messages: [{ role: "user", content: prompt }],
                 temperature: 0.7
             })
