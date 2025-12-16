@@ -97,8 +97,7 @@ async function cargarAdmin() {
 
 // 3. GENERAR CURIOSIDAD CON IA (CORREGIDO)
 // admin.js - VERSIÓN CON CLAVE EN BASE DE DATOS
-
-// admin.js - VERSIÓN "EL CAMBIAZO" (Usa Groq pero lee la variable vieja)
+// admin.js - VERSIÓN DEEPSEEK (Funciona en Cuba sin VPN)
 
 async function generarCuriosidad() {
     const nombre = document.getElementById('nombre').value;
@@ -110,39 +109,35 @@ async function generarCuriosidad() {
 
     btn.disabled = true; 
     loader.style.display = "inline-block"; 
-    campo.value = "Pensando una curiosidad..."; // Mensaje de carga
+    campo.value = "DeepSeek está pensando..."; // Mensaje de carga
 
     try {
-        // 1. RECUPERAR LA CLAVE (Usamos el nombre antiguo 'gemini_api_key' para no cambiar la BD)
+        // 1. RECUPERAR LA CLAVE (Desde Supabase)
         let API_KEY = '';
-        
-        // Intenta leer de Supabase (Método Seguro)
         const { data: secretos } = await supabaseClient
             .from('secretos')
             .select('valor')
-            .eq('nombre', 'gemini_api_key') // <--- AQUÍ: Buscamos la fila vieja
+            .eq('nombre', 'gemini_api_key') // Seguimos reciclando el nombre para no cambiar la BD
             .single();
             
         if(secretos) API_KEY = secretos.valor;
-        
-        // Si no la encuentra, lanza error
         if(!API_KEY) throw new Error("No encontré la clave en la base de datos.");
 
-        // 2. CONFIGURACIÓN DE GROQ (Llama 3)
-        // Aunque la variable se llame 'gemini', la usamos aquí con Groq
-        const URL = "https://api.groq.com/openai/v1/chat/completions";
+        // 2. CONFIGURACIÓN DE DEEPSEEK
+        // URL oficial de la API de DeepSeek
+        const URL = "https://api.deepseek.com/chat/completions";
         
-        const prompt = `Escribe un dato curioso muy breve (máximo 20 palabras) y divertido sobre: "${nombre}". Tono gastronómico y alegre.`;
+        const prompt = `Escribe un dato curioso e historico muy breve (máximo 20 palabras) y divertido sobre: "${nombre}". Tono gastronómico y alegre.`;
 
-        // 3. PETICIÓN A GROQ
+        // 3. PETICIÓN A DEEPSEEK
         const res = await fetch(URL, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_KEY}` // Aquí entra la clave de Groq
+                'Authorization': `Bearer ${API_KEY}`
             },
             body: JSON.stringify({
-                model: "moonshotai/kimi-k2-instruct-0905", // Modelo rápido, bueno y gratis
+                model: "deepseek-chat", // Este es el modelo V3 (rápido y bueno)
                 messages: [{ role: "user", content: prompt }],
                 temperature: 0.7
             })
@@ -151,22 +146,20 @@ async function generarCuriosidad() {
         const data = await res.json();
 
         if (data.error) {
-            console.error("Error Groq:", data.error);
+            console.error("Error DeepSeek:", data.error);
             campo.value = "Error: " + data.error.message;
         } else {
-            // Groq devuelve la respuesta en esta ruta:
             campo.value = data.choices[0].message.content;
         }
 
     } catch (e) {
         console.error(e);
-        campo.value = "Error de conexión o clave inválida.";
+        campo.value = "Error de conexión. Verifica tu internet.";
     } finally {
         loader.style.display = "none"; 
         btn.disabled = false;
     }
 }
-
 // 4. FUNCIONES DE EDICIÓN (NUEVAS)
 function prepararEdicion(id) {
     const producto = inventarioGlobal.find(p => p.id === id);
