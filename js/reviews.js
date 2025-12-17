@@ -12,9 +12,10 @@ async function cargarOpiniones() {
     // CAMBIOS: 
     const { data, error } = await supabaseClient
         .from('opiniones')
+        // CAMBIA LA LÍNEA DEL .select POR ESTA:
         .select(`
             id, puntuacion, comentario, cliente_nombre, created_at,
-            productos!fk_opiniones_productos ( nombre, imagen_url )
+            productos ( nombre, imagen_url )
         `)
         .order('created_at', { ascending: false });
 

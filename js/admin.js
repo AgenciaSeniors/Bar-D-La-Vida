@@ -31,7 +31,7 @@ async function cargarAdmin() {
     let { data: productos, error } = await supabaseClient
         .from('productos')
         .select('*')
-        .eq('activo', true)
+        //.eq('activo', true)
         .order('id', { ascending: false });
 
     if (error) { 
