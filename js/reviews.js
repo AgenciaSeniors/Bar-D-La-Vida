@@ -10,8 +10,7 @@ async function cargarOpiniones() {
     grid.innerHTML = '<p style="text-align:center; color:#666; grid-column:1/-1;">Cargando feedback...</p>';
 
     // 1. SOLICITUD A LA BASE DE DATOS
-    // Es CRUCIAL que 'cliente_nombre' esté en esta lista para que se vea en el panel
-    const { data, error } = await supabaseClient
+   const { data, error } = await supabaseClient
         .from('opiniones')
         .select(`
             id, 
@@ -19,7 +18,7 @@ async function cargarOpiniones() {
             comentario, 
             cliente_nombre, 
             created_at,
-            productos ( nombre, imagen_url )
+            productos:productos!opiniones_producto_id_fkey ( nombre, imagen_url )
         `)
         .order('created_at', { ascending: false });
 
