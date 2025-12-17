@@ -23,40 +23,39 @@ async function cerrarSesion() {
 }
 
 // 2. CARGAR INVENTARIO (Ahora solo carga y llama a renderizar)
-async function cargarAdmin() {
-    const lista = document.getElementById('lista-admin');
-    if (lista) lista.innerHTML = '<div style="text-align:center; padding:40px; color:#aaa;">⟳ Cargando inventario...</div>';
-
-    // Traemos los productos activos
-    let { data: productos, error } = await supabaseClient
-        .from('productos')
-        .select('*')
-        //.eq('activo', true)
-        .order('id', { ascending: false });
-
-    if (error) { 
-        alert("Error al cargar: " + error.message); 
-        return; 
-    }
+// --- SISTEMA DE PESTAÑAS (CORREGIDO Y SINCRONIZADO CON CSS) ---
+function cambiarVista(vistaNombre) {
+    // 1. Quitar la clase 'active' de TODAS las secciones y botones
+    document.querySelectorAll('.vista-seccion').forEach(el => {
+        el.classList.remove('active');
+        el.style.display = ''; // Limpiamos cualquier estilo inline viejo
+    });
     
-    // Guardamos en variable global para usar al editar y buscar
-    inventarioGlobal = productos || [];
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
 
-    // Renderizamos la lista completa
-    renderizarInventario(inventarioGlobal);
-
-    // 3. AGREGAR LISTENER AL BUSCADOR
-    const searchInput = document.getElementById('search-inventory');
-    if (searchInput) {
-        searchInput.addEventListener('input', buscarInventario);
+    // 2. Activar la sección seleccionada (CSS se encarga de mostrarla y animarla)
+    const vistaDestino = document.getElementById(`vista-${vistaNombre}`);
+    if (vistaDestino) {
+        vistaDestino.classList.add('active');
     }
 
-    if (typeof cargarOpiniones === "function") {
-        cargarOpiniones();
+    // 3. Activar el botón correspondiente
+    // Buscamos el botón basándonos en el onclick o el índice (lógica simplificada)
+    const botones = document.querySelectorAll('.tab-btn');
+    if(vistaNombre === 'inventario') botones[0].classList.add('active');
+    if(vistaNombre === 'opiniones') botones[1].classList.add('active');
+    if(vistaNombre === 'visitas') botones[2].classList.add('active');
+
+    // 4. Cargar datos específicos si es necesario
+    if (vistaNombre === 'visitas' && typeof cargarVisitas === 'function') {
+        cargarVisitas();
     }
-    
-    // NOTA: Se ha eliminado la llamada a cargarVisitas() de aquí.
-    // Ahora se llama desde cambiarVista('visitas')
+    // Opcional: recargar inventario u opiniones si quieres que se actualicen al entrar
+    if (vistaNombre === 'opiniones' && typeof cargarOpiniones === 'function') {
+        cargarOpiniones(); 
+    }
 }
 
 
