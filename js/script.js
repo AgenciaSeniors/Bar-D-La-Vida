@@ -260,6 +260,14 @@ function abrirOpinionDesdeDetalle() {
         modalOpinion.style.display = 'flex';
         setTimeout(() => modalOpinion.classList.add('active'), 10);
         
+        const nombreGuardado = localStorage.getItem('cliente_nombre');
+        const inputNombre = document.getElementById('cliente-nombre');
+        
+        // Si existe el nombre guardado y el input, lo escribimos
+        if(nombreGuardado && inputNombre) {
+            inputNombre.value = nombreGuardado;
+        }
+        
         puntuacion = 0;
         actualizarEstrellas();
     }, 300); // Espera un poco menos para que se sienta fluido

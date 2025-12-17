@@ -12,7 +12,6 @@ async function cargarOpiniones() {
     // CAMBIOS: 
     const { data, error } = await supabaseClient
         .from('opiniones')
-        // CAMBIA LA LÍNEA DEL .select POR ESTA:
         .select(`
             id, puntuacion, comentario, cliente_nombre, created_at,
             productos ( nombre, imagen_url )
