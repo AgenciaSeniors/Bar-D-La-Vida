@@ -3,15 +3,20 @@
 // Se ejecuta apenas carga la página
 // --- LÓGICA DE BIENVENIDA Y VISITAS MEJORADA ---
 
+// --- LÓGICA DE VISITAS INTELIGENTE (1 Visita cada 12 horas) ---
+
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Cargamos el menú visualmente lo antes posible
-    cargarMenu(); 
+    cargarMenu(); // Carga visual inmediata
 
-    // 2. Datos del cliente
     const clienteId = localStorage.getItem('cliente_id');
-    const visitadoEnEstaSesion = sessionStorage.getItem('visita_registrada');
+    const ultimaVisita = localStorage.getItem('ultima_visita_ts'); // Timestamp de la última vez
+    const ahora = Date.now();
+    
+    // Configuración: ¿Cada cuánto tiempo cuenta como nueva visita?
+    // 12 horas = 1000 ms * 60 s * 60 min * 12 h
+    const TIEMPO_ESPERA = 1000 * 60 * 60 * 12; 
 
-    // CASO A: CLIENTE NUEVO (Muestra Modal)
+    // CASO 1: CLIENTE NUEVO (No tiene ID)
     if (!clienteId) {
         setTimeout(() => {
             const modal = document.getElementById('modal-welcome');
@@ -21,31 +26,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }, 1500);
     } 
-    // CASO B: CLIENTE RECURRENTE (Registra visita silenciosa)
+    // CASO 2: CLIENTE YA REGISTRADO
     else {
-        // Solo registramos si NO ha visitado en esta sesión de navegador (evita F5 spam)
-        if (!visitadoEnEstaSesion) {
+        // Verificamos si ya pasó el tiempo de espera para contar otra visita
+        const tiempoTranscurrido = ultimaVisita ? (ahora - parseInt(ultimaVisita)) : TIEMPO_ESPERA + 1;
+
+        if (tiempoTranscurrido > TIEMPO_ESPERA) {
+            // ¡Es una nueva visita válida! (Ha pasado más de 12 horas o es la primera vez recurrente)
             try {
                 await supabaseClient.from('visitas').insert([{
                     cliente_id: clienteId,
                     motivo: 'Visita Recurrente'
                 }]);
                 
-                // Marcamos la sesión como "contada"
-                sessionStorage.setItem('visita_registrada', 'true');
-                console.log("Visita recurrente registrada correctamente.");
+                // Actualizamos la marca de tiempo para que no vuelva a contar hoy
+                localStorage.setItem('ultima_visita_ts', ahora.toString());
+                console.log("✅ Visita recurrente registrada (Nueva sesión válida)");
+
+                // Saludo opcional
+                const nombre = localStorage.getItem('cliente_nombre');
+                if(nombre && typeof showToast === 'function') {
+                    setTimeout(() => showToast(`¡Qué bueno verte de nuevo, ${nombre}!`), 2000);
+                }
+
             } catch (err) {
-                console.error("Error registrando visita recurrente:", err);
+                console.error("Error registrando visita:", err);
             }
         } else {
-            console.log("Visita ya contada en esta sesión.");
-        }
-        
-        // Opcional: Mostrar un Toast sutil de "Bienvenido de nuevo"
-        const nombre = localStorage.getItem('cliente_nombre');
-        if(nombre && typeof showToast === 'function') {
-            // Un pequeño delay para que no sea intrusivo
-            setTimeout(() => showToast(`¡Hola de nuevo, ${nombre}! 👋`), 2000);
+            // Si entra aquí, es porque abrió el menú hace poco. NO contamos nada.
+            console.log("ℹ️ Visita ignorada: El cliente ya fue contado hace menos de 12 horas.");
         }
     }
 });
@@ -100,11 +109,13 @@ async function registrarBienvenida() {
         }]);
 
         sessionStorage.setItem('visita_registrada', 'true');
-        
+
         // 4. Guardamos en el celular para no volver a pedirlo
         localStorage.setItem('cliente_id', clienteId);
         localStorage.setItem('cliente_nombre', nombre);
 
+        localStorage.setItem('ultima_visita_ts', Date.now().toString());
+        
         // 5. Cerrar y saludar
         cerrarWelcome();
         showToast(`¡Bienvenido, ${nombre}!`, "success");
