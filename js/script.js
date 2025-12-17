@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Configuración: ¿Cada cuánto tiempo cuenta como nueva visita?
     // 12 horas = 1000 ms * 60 s * 60 min * 12 h
-    const TIEMPO_ESPERA = 1000 * 60 * 60 * 12; 
+    const TIEMPO_ESPERA = 1000 * 10; 
 
     // CASO 1: CLIENTE NUEVO (No tiene ID)
     if (!clienteId) {
