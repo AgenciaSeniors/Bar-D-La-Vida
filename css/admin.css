@@ -160,3 +160,25 @@ body.admin-body {
     .admin-title { font-size: 1.2rem; }
     .admin-header { padding: 12px; }
 }
+
+/* --- ESTILOS DASHBOARD MÉTRICAS --- */
+
+.chart-container {
+    background: rgba(0,0,0,0.2);
+    border-radius: 12px;
+    padding: 10px;
+    border: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 20px;
+}
+
+/* Ajuste de tarjetas en la vista de Visitas */
+#vista-visitas .dashboard-grid {
+    /* En escritorio: Columna izquierda gráficos (más ancha), derecha ranking */
+    grid-template-columns: 2fr 1fr; 
+}
+
+@media (max-width: 900px) {
+    #vista-visitas .dashboard-grid {
+        grid-template-columns: 1fr; /* En móvil/tablet todo en una columna */
+    }
+}

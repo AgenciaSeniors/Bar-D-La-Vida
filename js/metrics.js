@@ -1,222 +1,262 @@
-// metrics.js - Lógica de Métricas de Visitas y Clientes
+// js/metrics.js - Dashboard Inteligente con Chart.js
 
-/**
- * Calcula la fecha de inicio para el filtro ISO, con un offset opcional (ej: -1 para ayer)
- * @param {string} tipo - 'dia', 'mes', 'anual'
- * @param {number} [offset=0] - Desplazamiento de días, meses o años.
- * @returns {string} Fecha ISO 8601
- */
-function getFechaFiltro(tipo, offset = 0) {
-    const now = new Date();
-    let start;
+let visitasChart = null;
+let horasChart = null;
 
-    switch (tipo) {
-        case 'dia':
-            // Asegura que el filtro empiece exactamente a las 00:00:00 del día actual (hora local)
-            start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
-            break;
-        case 'mes':
-            start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-            break;
-        case 'anual':
-            start = new Date(now.getFullYear() + offset, 0, 1);
-            break;
-        default:
-            return null;
-    }
-    // Formato ISO para Supabase (YYYY-MM-DDTHH:MM:SSZ)
-    return start.toISOString(); 
-}
-
-/**
- * Calcula el porcentaje de cambio y devuelve un objeto con el valor y el color semántico.
- * @param {number} actual - Valor actual.
- * @param {number} anterior - Valor del período anterior.
- * @returns {{text: string, color: string}}
- */
-function calcularComparacion(actual, anterior) {
-    if (anterior === 0) {
-        // Si el valor anterior es 0 y el actual es > 0, es crecimiento infinito
-        return { 
-            text: actual > 0 ? '▲ ∞%' : '0%', 
-            color: actual > 0 ? 'var(--green-success)' : '#888' 
-        };
-    }
-    const cambio = ((actual - anterior) / anterior) * 100;
-    const absCambio = Math.abs(cambio).toFixed(0);
-    
-    // Regla: 0% o positivo es verde, negativo es rojo
-    const color = cambio >= 0 ? 'var(--green-success)' : 'var(--red-danger)';
-    const icon = cambio >= 0 ? '▲' : '▼';
-    
-    return { 
-        text: `${icon} ${absCambio}%`, 
-        color: color 
+async function cargarVisitas() {
+    // Referencias al DOM
+    const els = {
+        hoy: document.getElementById('stat-hoy'),
+        mes: document.getElementById('stat-mes'),
+        unique: document.getElementById('stat-unique-clients'),
+        retorno: document.getElementById('stat-tasa-retorno'),
+        trendHoy: document.getElementById('trend-hoy')
     };
-}
 
-
-/**
- * Función para cargar y mostrar la lista de los clientes más frecuentes (TOP 5).
- * Requiere RLS SELECT en 'visitas' y 'clientes'.
- */
-async function cargarTopClientes() {
-    const listContainer = document.getElementById('top-clientes-list');
-    if (!listContainer) return;
-    
-    listContainer.innerHTML = '<p style="text-align:center; color:#666; padding:15px;">Analizando fidelidad...</p>';
+    // Loaders
+    Object.values(els).forEach(el => { if(el) el.textContent = '...'; });
 
     try {
-        // Obtenemos todas las visitas, incluyendo el nombre y teléfono del cliente
-        const { data: topClients, error } = await supabaseClient
+        // 1. OBTENER DATOS (Optimizamos para traer solo lo necesario)
+        // Traemos visitas de los últimos 30 días para gráficos + conteos totales
+        
+        const hoy = new Date();
+        const hace30dias = new Date();
+        hace30dias.setDate(hoy.getDate() - 30);
+
+        // A. Consulta de Visitas Recientes (para gráficos)
+        const { data: rawVisitas, error: errVisitas } = await supabaseClient
+            .from('visitas')
+            .select('created_at')
+            .gte('created_at', hace30dias.toISOString());
+
+        if (errVisitas) throw errVisitas;
+
+        // B. Consulta Totales (para KPIs históricos)
+        const { count: totalVisitas, error: errTotal } = await supabaseClient
+            .from('visitas')
+            .select('*', { count: 'exact', head: true });
+            
+        const { count: totalClientes, error: errClients } = await supabaseClient
+            .from('clientes')
+            .select('*', { count: 'exact', head: true });
+
+        if (errTotal || errClients) throw new Error("Error obteniendo totales");
+
+        // 2. PROCESAR KPIs
+        procesarKPIs(rawVisitas, totalVisitas, totalClientes, els);
+
+        // 3. RENDERIZAR GRÁFICOS
+        renderizarGraficoTendencia(rawVisitas);
+        renderizarGraficoHoras(rawVisitas);
+
+        // 4. CARGAR TOP CLIENTES (Consulta separada con Join)
+        cargarTopClientesAvanzado();
+
+    } catch (e) {
+        console.error("Error Dashboard:", e);
+        if(els.hoy) els.hoy.textContent = "Error";
+    }
+}
+
+function procesarKPIs(visitasRecientes, totalVisitas, totalClientes, els) {
+    const hoyStr = new Date().toISOString().split('T')[0];
+    const mesStr = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+    // Filtrar localmente
+    const visitasHoy = visitasRecientes.filter(v => v.created_at.startsWith(hoyStr)).length;
+    const visitasMes = visitasRecientes.filter(v => v.created_at.startsWith(mesStr)).length;
+
+    // Calcular Ayer para comparación
+    const ayer = new Date();
+    ayer.setDate(ayer.getDate() - 1);
+    const ayerStr = ayer.toISOString().split('T')[0];
+    const visitasAyer = visitasRecientes.filter(v => v.created_at.startsWith(ayerStr)).length;
+
+    // Renderizar Texto
+    if(els.hoy) els.hoy.textContent = visitasHoy;
+    if(els.mes) els.mes.textContent = visitasMes;
+    if(els.unique) els.unique.textContent = totalClientes;
+
+    // Tendencia (Comparación visual)
+    if(els.trendHoy) {
+        if(visitasHoy > visitasAyer) {
+            els.trendHoy.innerHTML = `<span style="color:var(--green-success)">▲ ${visitasHoy - visitasAyer} más que ayer</span>`;
+        } else if (visitasHoy < visitasAyer) {
+            els.trendHoy.innerHTML = `<span style="color:var(--red-danger)">▼ ${visitasAyer - visitasHoy} menos que ayer</span>`;
+        } else {
+            els.trendHoy.innerHTML = `<span style="color:#888">= Igual que ayer</span>`;
+        }
+    }
+
+    // Tasa Retorno
+    if (totalClientes > 0) {
+        const tasa = (totalVisitas / totalClientes).toFixed(1);
+        if(els.retorno) els.retorno.textContent = `${tasa}x`;
+    }
+}
+
+// --- GRÁFICOS CON CHART.JS ---
+
+function renderizarGraficoTendencia(data) {
+    const ctx = document.getElementById('chart-visitas').getContext('2d');
+    
+    // Agrupar por fecha (últimos 15 días)
+    const dias = {};
+    for(let i=14; i>=0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().split('T')[0];
+        dias[key] = 0; // Inicializar en 0
+    }
+
+    data.forEach(v => {
+        const key = v.created_at.split('T')[0];
+        if (dias.hasOwnProperty(key)) dias[key]++;
+    });
+
+    const labels = Object.keys(dias).map(fecha => {
+        const [y, m, d] = fecha.split('-');
+        return `${d}/${m}`;
+    });
+    const valores = Object.values(dias);
+
+    // Destruir anterior si existe
+    if(visitasChart) visitasChart.destroy();
+
+    visitasChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Visitas',
+                data: valores,
+                borderColor: '#FFD700', // Gold
+                backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                borderWidth: 2,
+                tension: 0.4, // Curva suave
+                fill: true,
+                pointBackgroundColor: '#000',
+                pointBorderColor: '#FFD700'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: '#333' }, ticks: { color: '#888' } },
+                x: { grid: { display: false }, ticks: { color: '#888' } }
+            }
+        }
+    });
+}
+
+function renderizarGraficoHoras(data) {
+    const ctx = document.getElementById('chart-horas').getContext('2d');
+
+    // Inicializar horas 00-23
+    const horas = new Array(24).fill(0);
+
+    data.forEach(v => {
+        const fecha = new Date(v.created_at);
+        const hora = fecha.getHours(); // Hora local del navegador
+        horas[hora]++;
+    });
+
+    // Etiquetas
+    const labels = horas.map((_, i) => `${i}:00`);
+
+    if(horasChart) horasChart.destroy();
+
+    horasChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Tráfico',
+                data: horas,
+                backgroundColor: horas.map(val => val > 0 ? 'rgba(0, 230, 118, 0.6)' : 'rgba(255,255,255,0.05)'),
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { display: false }, // Ocultar eje Y para limpieza
+                x: { grid: { display: false }, ticks: { color: '#666', maxTicksLimit: 8 } }
+            }
+        }
+    });
+}
+
+// --- TOP CLIENTES MEJORADO ---
+async function cargarTopClientesAvanzado() {
+    const listContainer = document.getElementById('top-clientes-list');
+    
+    try {
+        const { data: visitas, error } = await supabaseClient
             .from('visitas')
             .select(`
-                cliente_id,
-                clientes (nombre, telefono)
-            `);
+                created_at,
+                cliente:clientes (nombre, telefono)
+            `); // Nota: asumiendo relación FK correcta en supabase
             
         if (error) throw error;
         
-        if (!topClients || topClients.length === 0) {
-             listContainer.innerHTML = '<p style="text-align:center; color:#666; padding:15px;">No hay visitas registradas para analizar.</p>';
-             return;
-        }
-
-        // 1. Contar y agrupar visitas localmente
-        const clientVisits = {};
-        topClients.forEach(v => {
-            const id = v.cliente_id;
-            const name = v.clientes ? v.clientes.nombre : 'Anónimo';
-            const phone = v.clientes ? v.clientes.telefono : '';
+        // Procesar en JS: Agrupar por Cliente
+        const clientesMap = {};
+        
+        visitas.forEach(v => {
+            if(!v.cliente) return;
+            const key = v.cliente.telefono; // Usamos tel como ID único simple
             
-            if (!clientVisits[id]) {
-                clientVisits[id] = { name: name, phone: phone, count: 0 };
+            if(!clientesMap[key]) {
+                clientesMap[key] = {
+                    nombre: v.cliente.nombre,
+                    telefono: v.cliente.telefono,
+                    visitas: 0,
+                    ultimaVisita: v.created_at
+                };
             }
-            clientVisits[id].count++;
+            clientesMap[key].visitas++;
+            // Actualizar fecha si esta visita es más reciente
+            if (new Date(v.created_at) > new Date(clientesMap[key].ultimaVisita)) {
+                clientesMap[key].ultimaVisita = v.created_at;
+            }
         });
 
-        // 2. Convertir a array y ordenar por count (descendente)
-        const sortedClients = Object.values(clientVisits)
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 5); // Tomamos el TOP 5
+        // Ordenar y cortar top 5
+        const ranking = Object.values(clientesMap)
+            .sort((a, b) => b.visitas - a.visitas)
+            .slice(0, 5);
 
-        // 3. Renderizar
-        const html = sortedClients.map((client, index) => {
-            const rankIcon = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : '✨';
+        // Renderizar
+        const html = ranking.map((c, index) => {
+            const lastDate = new Date(c.ultimaVisita).toLocaleDateString();
+            const rankIcon = ['🥇','🥈','🥉'][index] || '✨';
             
             return `
                 <div class="inventory-item" style="border-left: 3px solid ${index === 0 ? 'var(--gold)' : '#333'};">
                     <span style="font-size:1.5rem; width: 30px; text-align:center;">${rankIcon}</span>
                     <div class="item-meta">
-                        <span class="item-title">${client.name}</span>
-                        <span class="item-price" style="color: var(--green-success);">${client.count} Visitas</span>
+                        <span class="item-title">${c.nombre}</span>
+                        <span style="font-size:0.75rem; color:#888;">Última vez: ${lastDate}</span>
                     </div>
-                    <span style="color:#888; font-size:0.85rem;">Tel: ${client.phone || 'N/A'}</span>
+                    <div style="text-align:right;">
+                        <span class="item-price" style="color: var(--green-success); font-size:1.1rem;">${c.visitas}</span>
+                        <small style="display:block; color:#555; font-size:0.7rem;">Visitas</small>
+                    </div>
                 </div>
             `;
         }).join('');
 
-        listContainer.innerHTML = html;
+        listContainer.innerHTML = html || '<p style="text-align:center; color:#666;">Sin datos aún.</p>';
 
     } catch (e) {
-        console.error("Error cargando Top Clientes (RLS?):", e.message);
-        listContainer.innerHTML = `<p style="text-align:center; color:var(--red-danger); padding:15px;">Error al cargar Top Clientes. (RLS: ¿Permite SELECT en 'visitas' y 'clientes'?) Mensaje: ${e.message}</p>`;
-    }
-}
-
-
-/**
- * Función principal para cargar todas las métricas de visitas y clientes.
- * Debe ser llamada cuando se abre la pestaña 'visitas'.
- */
-async function cargarVisitas() {
-    // Definición de todos los elementos de la interfaz para actualizar
-    const elements = {
-        hoy: document.getElementById('stat-hoy'),
-        mes: document.getElementById('stat-mes'),
-        anual: document.getElementById('stat-anual'),
-        total: document.getElementById('stat-total-visitas'),
-        unique: document.getElementById('stat-unique-clients'),
-        tasaRetorno: document.getElementById('stat-tasa-retorno'),
-        compHoy: document.getElementById('comp-hoy-val'),
-        compMes: document.getElementById('comp-mes-val')
-    };
-
-    // Poner loaders
-    Object.values(elements).forEach(el => {
-        if(el) el.textContent = '...';
-    });
-
-    try {
-        // --- 1. Conteo de Clientes Únicos y Visitas Totales ---
-        // Requiere RLS SELECT en 'clientes' y 'visitas'
-        const { count: uniqueCount, error: uniqueError } = await supabaseClient
-            .from('clientes')
-            .select('*', { count: 'exact', head: true });
-            
-        if (uniqueError) throw uniqueError;
-
-        const { count: totalCount, error: totalError } = await supabaseClient
-            .from('visitas')
-            .select('*', { count: 'exact', head: true });
-
-        if (totalError) throw totalError;
-
-        // --- Actualizar Totales Simples y Tasa de Retorno ---
-        if(elements.unique) elements.unique.textContent = uniqueCount;
-        if(elements.total) elements.total.textContent = totalCount;
-
-        if (uniqueCount > 0) {
-            const tasa = (totalCount / uniqueCount).toFixed(1);
-            if (elements.tasaRetorno) elements.tasaRetorno.textContent = tasa;
-        } else {
-            if (elements.tasaRetorno) elements.tasaRetorno.textContent = '0.0';
-        }
-
-
-        // --- 2. Comparación Diaria (Hoy vs Ayer) ---
-        const startDia = getFechaFiltro('dia');
-        const startAyer = getFechaFiltro('dia', -1);
-        
-        const { count: diaCount } = await supabaseClient.from('visitas').select('*', { count: 'exact', head: true }).gte('created_at', startDia); 
-        const { count: ayerCount } = await supabaseClient.from('visitas').select('*', { count: 'exact', head: true }).gte('created_at', startAyer).lt('created_at', startDia); 
-
-        if(elements.hoy) elements.hoy.textContent = diaCount;
-        const compHoy = calcularComparacion(diaCount, ayerCount);
-        if (elements.compHoy) {
-            elements.compHoy.textContent = compHoy.text;
-            elements.compHoy.style.color = compHoy.color;
-        }
-
-
-        // --- 3. Comparación Mensual (Este Mes vs Mes Anterior) ---
-        const startMes = getFechaFiltro('mes');
-        const startMesAnterior = getFechaFiltro('mes', -1);
-        const startAnual = getFechaFiltro('anual');
-
-        const { count: mesCount } = await supabaseClient.from('visitas').select('*', { count: 'exact', head: true }).gte('created_at', startMes); 
-        const { count: mesAnteriorCount } = await supabaseClient.from('visitas').select('*', { count: 'exact', head: true }).gte('created_at', startMesAnterior).lt('created_at', startMes); 
-        const { count: anualCount } = await supabaseClient.from('visitas').select('*', { count: 'exact', head: true }).gte('created_at', startAnual);
-        
-        if(elements.mes) elements.mes.textContent = mesCount;
-        if(elements.anual) elements.anual.textContent = anualCount;
-
-        const compMes = calcularComparacion(mesCount, mesAnteriorCount);
-        if (elements.compMes) {
-            elements.compMes.textContent = compMes.text;
-            elements.compMes.style.color = compMes.color;
-        }
-        
-        // --- 4. Cargar Top Clientes ---
-        cargarTopClientes();
-
-
-    } catch (e) {
-        console.error("Error al cargar estadísticas de visitas (RLS?):", e.message);
-        // Si hay error, actualizamos todos los contadores a 'Error'
-        Object.values(elements).forEach(el => {
-            if(el) el.textContent = 'Error';
-        });
-        document.getElementById('top-clientes-list').innerHTML = `<p style="text-align:center; color:var(--red-danger); padding:15px;">Error de acceso: Asegúrate que RLS permite SELECT en 'visitas' y 'clientes'.</p>`;
+        console.error("Top Clientes Error:", e);
+        listContainer.innerHTML = '<p style="color:var(--red-danger); text-align:center;">Error cargando ranking</p>';
     }
 }
