@@ -201,8 +201,8 @@ async function cargarTopClientesAvanzado() {
             .from('visitas')
             .select(`
                 created_at,
-                cliente:clientes (nombre, telefono)
-            `); // Nota: asumiendo relación FK correcta en supabase
+                cliente:clientes!visitas_cliente_id_fkey (nombre, telefono)
+            `); 
             
         if (error) throw error;
         
