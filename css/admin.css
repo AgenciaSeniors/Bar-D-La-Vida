@@ -182,3 +182,24 @@ body.admin-body {
         grid-template-columns: 1fr; /* En móvil/tablet todo en una columna */
     }
 }
+/* --- REGLAS VITALES PARA PESTAÑAS (Copia esto en admin.css) --- */
+
+/* 1. Ocultar todas las secciones por defecto */
+.vista-seccion {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* 2. MOSTRAR la sección que tenga la clase 'active' */
+.vista-seccion.active {
+    display: block !important; /* El !important fuerza que se vea */
+    opacity: 1 !important;
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* Animación de entrada suave */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
