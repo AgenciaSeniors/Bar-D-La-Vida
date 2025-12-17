@@ -13,7 +13,8 @@
     <link rel="stylesheet" href="css/reviews.css">
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <script src="js/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
+    <script src="js/config.js"></script>
 </head>
 <body class="admin-body">
 
@@ -29,111 +30,7 @@
             </button>
         </div>
     </header>
-    <div id="vista-inventario" class="vista-seccion active">
-    <div class="dashboard-grid">
-        
-        <div class="upload-zone">
-            <h3 style="color:var(--gold); margin-bottom:20px;">Nuevo Producto</h3>
-            <form id="form-producto">
-                <input type="hidden" id="edit-id"> <div class="input-group">
-                    <label>Imagen del Producto</label>
-                    <label class="file-upload-wrapper">
-                        <input type="file" id="imagen-file" accept="image/*">
-                        <span class="material-icons" style="font-size:2rem; color:#666;">cloud_upload</span>
-                        <span class="file-upload-text">Toca para subir foto</span>
-                    </label>
-                </div>
 
-                <div class="input-group">
-                    <label>Nombre del Plato/Bebida</label>
-                    <input type="text" id="nombre" class="input-stylish" placeholder="Ej: Mojito Clásico" required>
-                </div>
-
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                    <div class="input-group">
-                        <label>Precio ($)</label>
-                        <input type="number" id="precio" class="input-stylish" step="0.01" placeholder="0.00" required>
-                    </div>
-                    <div class="input-group">
-                        <label>Categoría</label>
-                        <select id="categoria" class="input-stylish">
-                            <option value="cocteles">Cocteles</option>
-                            <option value="cervezas">Cervezas</option>
-                            <option value="licores">Vinos/Licores</option>
-                            <option value="bebidas_sin">Bebidas s/ Alcohol</option>
-                            <option value="italiana">Comida Italiana</option>
-                            <option value="fuertes">Platos Fuertes</option>
-                            <option value="tapas">Para Picar</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <label>Descripción</label>
-                    <textarea id="descripcion" class="input-stylish" rows="2" placeholder="Ingredientes principales..."></textarea>
-                </div>
-
-                <div class="input-group">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <label>Dato Curioso (IA)</label>
-                        <button type="button" id="btn-ia" onclick="generarCuriosidad()" style="background:none; border:none; color:var(--gold); cursor:pointer; font-size:0.7rem;">
-                            ✨ Generar
-                        </button>
-                    </div>
-                    <textarea id="curiosidad" class="input-stylish" rows="2" placeholder="Genera un dato curioso..."></textarea>
-                    <span id="loader-ia" style="display:none; color:var(--gold); font-size:0.7rem;">Pensando...</span>
-                </div>
-
-                <div class="input-group" style="display:flex; align-items:center; gap:10px;">
-                    <input type="checkbox" id="destacado" style="width:20px; height:20px;">
-                    <label for="destacado" style="margin:0; cursor:pointer;">¿Destacar en portada?</label>
-                </div>
-
-                <button type="submit" id="btn-submit" class="btn-big-action">GUARDAR PRODUCTO</button>
-                <button type="button" id="btn-cancelar" onclick="cancelarEdicion()" class="btn-big-action" style="background:#333; margin-top:10px; display:none;">CANCELAR EDICIÓN</button>
-            </form>
-        </div>
-
-        <div class="inventory-zone">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h3 style="color:white; margin:0;">Inventario Actual</h3>
-                <input type="text" placeholder="🔍 Buscar..." onkeyup="buscarInventario(event)" 
-                       style="background:#222; border:1px solid #444; color:white; padding:5px 10px; border-radius:20px; outline:none;">
-            </div>
-
-            <div id="lista-admin" class="inventory-list">
-                </div>
-        </div>
-
-    </div>
-</div>
-<div id="vista-opiniones" class="vista-seccion" style="display:none;">
-    <div class="metrics-grid">
-        <div class="metric-card">
-            <span class="metric-value" id="stat-promedio">--</span>
-            <span class="metric-label">Promedio General</span>
-        </div>
-        <div class="metric-card">
-            <span class="metric-value" id="stat-total">--</span>
-            <span class="metric-label">Total Opiniones</span>
-        </div>
-        <div class="metric-card">
-            <span class="metric-value" id="stat-mejor" style="font-size:1.2rem; margin-top:10px;">--</span>
-            <span class="metric-label">Plato Estrella</span>
-        </div>
-    </div>
-
-    <div class="reviews-zone">
-        <div class="reviews-filter">
-            <button class="filter-pill active" onclick="filtrarOpiniones('todas', this)">Todas</button>
-            <button class="filter-pill" onclick="filtrarOpiniones('5', this)">⭐ 5 Estrellas</button>
-            <button class="filter-pill" onclick="filtrarOpiniones('alertas', this)">⚠️ Alertas (Bajas)</button>
-        </div>
-
-        <div id="grid-opiniones" class="reviews-grid">
-            </div>
-    </div>
-</div>
     <div class="admin-tabs">
         <button class="tab-btn active" onclick="cambiarVista('inventario')">
             <span class="material-icons">inventory_2</span> Inventario
@@ -147,16 +44,129 @@
     </div>
 
     <main class="admin-content">
+        
         <div id="vista-inventario" class="vista-seccion active">
-             <div class="dashboard-grid">
-                 </div>
+            <div class="dashboard-grid">
+                
+                <div class="upload-zone">
+                    <h3 style="color:white; margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">
+                        Gestión de Producto
+                    </h3>
+                    
+                    <form id="form-producto">
+                        <input type="hidden" id="edit-id">
+
+                        <div class="input-group">
+                            <label>Nombre</label>
+                            <input type="text" id="nombre" class="input-stylish" required>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                            <div class="input-group">
+                                <label>Precio</label>
+                                <input type="number" id="precio" class="input-stylish" step="0.01" required>
+                            </div>
+                            <div class="input-group">
+                                <label>Categoría</label>
+                                <select id="categoria" class="input-stylish">
+                                    <option value="cocteles">Cocteles</option>
+                                    <option value="cervezas">Cervezas</option>
+                                    <option value="licores">Vinos/Licor</option>
+                                    <option value="bebidas_sin">Bebidas s/a</option>
+                                    <option value="italiana">Pizzas/Pastas</option>
+                                    <option value="fuertes">Carnes</option>
+                                    <option value="tapas">Para Picar</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Foto <small style="color:#666; font-weight:normal;">(Opcional al editar)</small></label>
+                            <div class="file-upload-wrapper" onclick="document.getElementById('imagen-file').click()">
+                                <span class="material-icons" style="font-size:2rem; color:#666; margin-bottom:5px;">cloud_upload</span>
+                                <span class="file-upload-text">Toca para subir imagen</span>
+                                <input type="file" id="imagen-file" accept="image/*">
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Descripción</label>
+                            <textarea id="descripcion" class="input-stylish" rows="2"></textarea>
+                        </div>
+
+                        <div style="background:#25252b; padding:15px; border-radius:10px; border:1px dashed #444; margin-bottom:20px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                <span style="color:var(--gold); font-size:0.8rem; font-weight:bold;">✨ Dato Curioso (IA)</span>
+                                <button type="button" id="btn-ia" onclick="generarCuriosidad()" style="background:var(--gold); border:none; padding:5px 12px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:0.7rem;">Generar</button>
+                            </div>
+                            <span id="loader-ia" style="display:none; color:#888; font-size:0.7rem;">Conectando...</span>
+                            <textarea id="curiosidad" class="input-stylish" rows="2" style="font-size:0.85rem; background:#1a1a20;" placeholder="Automático..."></textarea>
+                        </div>
+
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px;">
+                            <input type="checkbox" id="destacado" style="width:18px; height:18px; accent-color:var(--gold);">
+                            <label for="destacado" style="margin:0; cursor:pointer; color:#ccc;">Marcar como "Destacado" 🌟</label>
+                        </div>
+
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <button type="submit" class="btn-big-action" id="btn-submit">GUARDAR PRODUCTO</button>
+                            <button type="button" id="btn-cancelar" onclick="cancelarEdicion()" style="background:transparent; border:1px solid #555; color:#ccc; padding:15px; border-radius:12px; cursor:pointer; display:none;">
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="inventory-zone">
+                    <h3 style="color:white; margin-bottom:20px;">Inventario Actual</h3>
+                    
+                    <div style="margin-bottom: 20px; position:relative;">
+                        <span class="material-icons" style="position:absolute; left:10px; top:13px; color:#888; font-size:1.2rem;">search</span>
+                        <input type="text" id="search-inventory" onkeyup="buscarInventario(event)" placeholder="Buscar por nombre, descripción o categoría..." class="input-stylish" style="width:100%; padding:12px 10px 12px 35px; border-radius: 8px;">
+                    </div>
+                    
+                    <div id="lista-admin" class="inventory-list">
+                        </div>
+                </div>
+
+            </div>
         </div>
 
         <div id="vista-opiniones" class="vista-seccion" style="display:none;">
-             </div>
+            <div class="reviews-zone">
+                <h3 style="color:white; margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:10px;">
+                    💬 Feedback de Clientes
+                </h3>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <span class="metric-value" id="stat-promedio">--</span>
+                        <span class="metric-label">Promedio General</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-value" id="stat-total">0</span>
+                        <span class="metric-label">Opiniones Totales</span>
+                    </div>
+                    <div class="metric-card" style="border-color: rgba(255,215,0,0.2);">
+                        <div style="font-size:1.5rem; margin:5px 0;">🏆</div>
+                        <span class="metric-label" id="stat-mejor">--</span>
+                    </div>
+                </div>
+
+                <div class="reviews-filter">
+                    <button class="filter-pill active" onclick="filtrarOpiniones('todas', this)">Todas</button>
+                    <button class="filter-pill" onclick="filtrarOpiniones('5', this)">5 Estrellas 🌟</button>
+                    <button class="filter-pill" onclick="filtrarOpiniones('alertas', this)">Alertas (1-2) ⚠️</button>
+                </div>
+
+                <div id="grid-opiniones" class="reviews-grid">
+                    </div>
+            </div>
+        </div>
 
         <div id="vista-visitas" class="vista-seccion" style="display:none;">
-            <div class="dashboard-grid"> <div style="display:flex; flex-direction:column; gap:20px;">
+            <div class="dashboard-grid"> 
+                <div style="display:flex; flex-direction:column; gap:20px;">
                     
                     <div class="metrics-grid">
                         <div class="metric-card">
