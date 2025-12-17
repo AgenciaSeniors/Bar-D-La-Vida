@@ -1,34 +1,52 @@
 // --- LÓGICA DE BIENVENIDA ---
 
 // Se ejecuta apenas carga la página
+// --- LÓGICA DE BIENVENIDA Y VISITAS MEJORADA ---
+
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Cargamos el menú
+    // 1. Cargamos el menú visualmente lo antes posible
     cargarMenu(); 
 
-    // 2. Verificamos si ya conocemos al cliente
+    // 2. Datos del cliente
     const clienteId = localStorage.getItem('cliente_id');
-    
+    const visitadoEnEstaSesion = sessionStorage.getItem('visita_registrada');
+
+    // CASO A: CLIENTE NUEVO (Muestra Modal)
     if (!clienteId) {
-        // Si es nuevo, mostramos el modal con un pequeño delay elegante
         setTimeout(() => {
             const modal = document.getElementById('modal-welcome');
             if(modal) {
                 modal.style.display = 'flex';
-                // Pequeño truco para activar la animación CSS
                 setTimeout(() => modal.classList.add('active'), 50);
             }
-        }, 1500); // 1.5 segundos de espera para que vea el fondo primero
-    } else {
-        try {
-            await supabaseClient.from('visitas').insert([{
-                cliente_id: clienteId,
-                motivo: 'Visita Recurrente'
-            }]);
-            console.log("Visita recurrente registrada");
-        } catch (err) {
-            console.error("No se pudo registrar visita", err);
+        }, 1500);
+    } 
+    // CASO B: CLIENTE RECURRENTE (Registra visita silenciosa)
+    else {
+        // Solo registramos si NO ha visitado en esta sesión de navegador (evita F5 spam)
+        if (!visitadoEnEstaSesion) {
+            try {
+                await supabaseClient.from('visitas').insert([{
+                    cliente_id: clienteId,
+                    motivo: 'Visita Recurrente'
+                }]);
+                
+                // Marcamos la sesión como "contada"
+                sessionStorage.setItem('visita_registrada', 'true');
+                console.log("Visita recurrente registrada correctamente.");
+            } catch (err) {
+                console.error("Error registrando visita recurrente:", err);
+            }
+        } else {
+            console.log("Visita ya contada en esta sesión.");
         }
-        // ---------------------------------------------------
+        
+        // Opcional: Mostrar un Toast sutil de "Bienvenido de nuevo"
+        const nombre = localStorage.getItem('cliente_nombre');
+        if(nombre && typeof showToast === 'function') {
+            // Un pequeño delay para que no sea intrusivo
+            setTimeout(() => showToast(`¡Hola de nuevo, ${nombre}! 👋`), 2000);
+        }
     }
 });
 
@@ -267,7 +285,7 @@ function abrirOpinionDesdeDetalle() {
         if(nombreGuardado && inputNombre) {
             inputNombre.value = nombreGuardado;
         }
-        
+
         puntuacion = 0;
         actualizarEstrellas();
     }, 300); // Espera un poco menos para que se sienta fluido
