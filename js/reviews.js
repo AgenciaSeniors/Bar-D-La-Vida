@@ -19,7 +19,7 @@ async function cargarOpiniones() {
             comentario, 
             cliente_nombre, 
             created_at,
-            productos_id ( nombre, imagen_url )
+            productos ( nombre, imagen_url )
         `)
         .order('created_at', { ascending: false });
 
