@@ -99,6 +99,8 @@ async function registrarBienvenida() {
             motivo: 'Ingreso Menú'
         }]);
 
+        sessionStorage.setItem('visita_registrada', 'true');
+        
         // 4. Guardamos en el celular para no volver a pedirlo
         localStorage.setItem('cliente_id', clienteId);
         localStorage.setItem('cliente_nombre', nombre);
