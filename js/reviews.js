@@ -9,11 +9,16 @@ async function cargarOpiniones() {
 
     grid.innerHTML = '<p style="text-align:center; color:#666; grid-column:1/-1;">Cargando feedback...</p>';
 
-    // CAMBIOS: 
+    // 1. SOLICITUD A LA BASE DE DATOS
+    // Es CRUCIAL que 'cliente_nombre' esté en esta lista para que se vea en el panel
     const { data, error } = await supabaseClient
         .from('opiniones')
         .select(`
-            id, puntuacion, comentario, cliente_nombre, created_at,
+            id, 
+            puntuacion, 
+            comentario, 
+            cliente_nombre, 
+            created_at,
             productos ( nombre, imagen_url )
         `)
         .order('created_at', { ascending: false });
@@ -41,15 +46,17 @@ function calcularMetricas(lista) {
     const suma = lista.reduce((acc, curr) => acc + curr.puntuacion, 0);
     const prom = (suma / lista.length).toFixed(1);
     const statPromedio = document.getElementById('stat-promedio');
-    statPromedio.textContent = `★ ${prom}`;
-    
-    // Color semántico
-    if(prom >= 4.5) statPromedio.style.color = 'var(--green-success)';
-    else if(prom < 3) statPromedio.style.color = 'var(--red-danger)';
-    else statPromedio.style.color = 'var(--gold)';
+    if(statPromedio) {
+        statPromedio.textContent = `★ ${prom}`;
+        // Color semántico
+        if(prom >= 4.5) statPromedio.style.color = 'var(--green-success)';
+        else if(prom < 3) statPromedio.style.color = 'var(--red-danger)';
+        else statPromedio.style.color = 'var(--gold)';
+    }
     
     // 2. Total
-    document.getElementById('stat-total').textContent = lista.length;
+    const statTotal = document.getElementById('stat-total');
+    if(statTotal) statTotal.textContent = lista.length;
 
     // 3. Mejor Plato (el que tiene más calificaciones de 5 estrellas)
     const conteo5 = {};
@@ -60,11 +67,14 @@ function calcularMetricas(lista) {
     
     // Buscar el máximo
     let mejor = Object.keys(conteo5).reduce((a, b) => conteo5[a] > conteo5[b] ? a : b, "N/A");
-    document.getElementById('stat-mejor').textContent = mejor !== "N/A" ? mejor : "Sin datos";
+    const statMejor = document.getElementById('stat-mejor');
+    if(statMejor) statMejor.textContent = mejor !== "N/A" ? mejor : "Sin datos";
 }
 
 function renderizarOpiniones(lista) {
     const grid = document.getElementById('grid-opiniones');
+    if(!grid) return;
+    
     grid.innerHTML = '';
 
     if(lista.length === 0) {
@@ -77,6 +87,9 @@ function renderizarOpiniones(lista) {
         const fecha = new Date(op.created_at).toLocaleDateString();
         const prodNombre = op.productos?.nombre || 'Producto Borrado';
         const prodImg = op.productos?.imagen_url || 'https://via.placeholder.com/40';
+        
+        // AQUÍ SE USA EL NOMBRE. Si viene null de la BD, pone "Anónimo"
+        const autor = op.cliente_nombre || 'Anónimo';
 
         return `
             <div class="review-card">
@@ -93,8 +106,7 @@ function renderizarOpiniones(lista) {
                 <p class="review-body">"${op.comentario || 'Sin comentario'}"</p>
 
                 <div class="review-footer">
-                    <span class="review-author">${op.cliente_nombre || 'Anónimo'}</span>
-                    <span class="review-email">${op.cliente_email || ''}</span>
+                    <span class="review-author">${autor}</span>
                 </div>
 
                 <button class="btn-delete-review" onclick="borrarOpinion(${op.id})" title="Borrar Opinión">
@@ -128,12 +140,8 @@ async function borrarOpinion(id) {
     if(confirm("¿Eliminar esta opinión permanentemente?")) {
         const { error } = await supabaseClient.from('opiniones').delete().eq('id', id);
         if(!error) {
-            // Asumimos que showToast existe globalmente (en script.js o admin.js)
-            // Si no, usamos alert
-            if (typeof showToast === "function") showToast("Opinión eliminada", "success");
-            else alert("Opinión eliminada");
-            
-            cargarOpiniones();
+            alert("Opinión eliminada");
+            cargarOpiniones(); // Recargar lista
         } else {
             alert("Error al borrar: " + error.message);
         }
