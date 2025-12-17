@@ -1,14 +1,14 @@
 // --- LÓGICA DE BIENVENIDA ---
 
 // Se ejecuta apenas carga la página
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // 1. Cargamos el menú
     cargarMenu(); 
 
     // 2. Verificamos si ya conocemos al cliente
-    const yaRegistrado = localStorage.getItem('cliente_id');
+    const clienteId = localStorage.getItem('cliente_id');
     
-    if (!yaRegistrado) {
+    if (!clienteId) {
         // Si es nuevo, mostramos el modal con un pequeño delay elegante
         setTimeout(() => {
             const modal = document.getElementById('modal-welcome');
@@ -18,6 +18,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => modal.classList.add('active'), 50);
             }
         }, 1500); // 1.5 segundos de espera para que vea el fondo primero
+    } else {
+        try {
+            await supabaseClient.from('visitas').insert([{
+                cliente_id: clienteId,
+                motivo: 'Visita Recurrente'
+            }]);
+            console.log("Visita recurrente registrada");
+        } catch (err) {
+            console.error("No se pudo registrar visita", err);
+        }
+        // ---------------------------------------------------
     }
 });
 
