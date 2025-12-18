@@ -270,16 +270,12 @@ function filtrar(cat, btn) {
 }
 
 // --- DETALLES Y OPINIONES ---
-// Definir la URL de tu Google Apps Script al inicio del archivo para fácil acceso
-const URL_IA_BACKEND = "https://script.google.com/macros/s/AKfycbzEmZU43Lo4u54KY6tmLBjxetnqtHLIwvPTa5PYLkiRbG02B67Ad1MpGW8VWc6CprlB/exec";
-
-// --- MEJORA EN DETALLES PARA GENERAR CURIOSIDAD IA ---
-async function abrirDetalle(id) {
+function abrirDetalle(id) {
     productoActual = todosLosProductos.find(p => p.id === id);
     if (!productoActual) return;
 
     const imgEl = document.getElementById('det-img');
-    if(imgEl) imgEl.src = productoActual.imagen_url || 'img/logo.png';
+    if(imgEl) imgEl.src = productoActual.imagen_url || '';
     
     setText('det-titulo', productoActual.nombre);
     setText('det-desc', productoActual.descripcion);
@@ -287,34 +283,11 @@ async function abrirDetalle(id) {
     setText('det-rating-big', productoActual.ratingPromedio ? `★ ${productoActual.ratingPromedio}` : '★ --');
 
     const box = document.getElementById('box-curiosidad');
-    const textCuriosidad = document.getElementById('det-curiosidad');
-
-    // Si el producto ya tiene curiosidad en la BD, la mostramos
     if (productoActual.curiosidad && productoActual.curiosidad.length > 5) {
         if(box) box.style.display = "block";
         setText('det-curiosidad', productoActual.curiosidad);
     } else {
-        // Si no tiene, llamamos a la IA dinámicamente
-        if(box) {
-            box.style.display = "block";
-            textCuriosidad.innerHTML = "<i>Consultando al historiador...</i>";
-            
-            try {
-                const res = await fetch(URL_IA_BACKEND, {
-                    method: 'POST',
-                    body: JSON.stringify({ producto: productoActual.nombre })
-                });
-                const data = await res.json();
-                if(data.curiosidad) {
-                    textCuriosidad.textContent = data.curiosidad;
-                    productoActual.curiosidad = data.curiosidad; // Guardar temporalmente
-                } else {
-                    box.style.display = "none";
-                }
-            } catch (e) {
-                box.style.display = "none";
-            }
-        }
+        if(box) box.style.display = "none";
     }
     
     const modal = document.getElementById('modal-detalle');
@@ -606,71 +579,71 @@ function detenerDetectorMovimiento() {
 }
 
 // --- LLAMADA A LA IA ---
-// js/script.js - Reemplaza tu función procesarMezcla actual con esta:
-
-// 1. Reemplaza procesarMezcla para incluir el Shuffle
 async function procesarMezcla() {
-    if (shakerState.isProcessing || todosLosProductos.length === 0) return;
+    if (shakerState.isProcessing) return;
     shakerState.isProcessing = true;
-    
-    const btn = document.getElementById('btn-mix-manual');
-    const visual = document.getElementById('shaker-img');
-    if(btn) btn.disabled = true;
-    if(visual) visual.classList.add('shaking');
+    detenerDetectorMovimiento(); 
 
-    const menuRandom = [...todosLosProductos]
-        .sort(() => Math.random() - 0.5)
-        .map(p => p.nombre)
-        .join(', ');
+    // UI Feedback
+    const btn = document.getElementById('btn-mix-manual');
+    const status = document.getElementById('shaker-status');
+    const visual = document.getElementById('shaker-img');
+    
+    btn.textContent = "Mezclando sabores...";
+    status.textContent = "🧠 La IA está probando la mezcla...";
+    visual.classList.add('shaking'); 
+
+    // Preparar datos para Google Script
+    const menuSimple = todosLosProductos.map(p => p.nombre).join(', ');
+    const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwfGlwmuKVSy630EnyWR4gJ0k-5hPVIwWg_bXS07m0v79KahgZ8J3Eyvi_DQu1-MbOg/exec";
 
     try {
-        const response = await fetch(URL_IA_BACKEND, {
+        const response = await fetch(URL_SCRIPT, {
             method: 'POST',
             body: JSON.stringify({
-                tipo: "coctel", // <--- CORRECCIÓN: Ahora el backend sí reconocerá la petición
+                tipo: "Cualquiera", 
                 sabor: shakerState.seleccionados.join(', '), 
-                menu: menuRandom 
-            })
+                menu: menuSimple 
+            }),
+            headers: { "Content-Type": "text/plain" }
         });
 
         const data = await response.json();
+        
         if (data.recomendacion) {
             mostrarResultadoShaker(data.recomendacion);
-        } else if (data.error) {
-            showToast(data.error, "error");
-            throw new Error(data.error);
+        } else {
+            throw new Error("Sin respuesta válida");
         }
 
     } catch (error) {
         console.error(error);
-        showToast("Error al conectar con la IA", "error");
+        status.textContent = "Error de conexión. Intenta de nuevo.";
         shakerState.isProcessing = false;
-        if(visual) visual.classList.remove('shaking');
-        if(btn) btn.disabled = false;
+        visual.classList.remove('shaking');
+        btn.textContent = "¡MEZCLAR AHORA!";
+        btn.disabled = false;
     }
 }
 
-// 2. Reemplaza mostrarResultadoShaker con lógica de búsqueda flexible
 function mostrarResultadoShaker(nombreRecibido) {
     const nombreIA = nombreRecibido.toLowerCase().trim();
 
-    // Búsqueda inteligente: intentamos encontrar el nombre de la IA dentro de nuestra BD
     const producto = todosLosProductos.find(p => {
         const nombreBD = p.nombre.toLowerCase();
-        return nombreBD === nombreIA || nombreBD.includes(nombreIA) || nombreIA.includes(nombreBD);
+        return nombreBD.includes(nombreIA) || nombreIA.includes(nombreBD);
     });
 
     cerrarShaker();
 
     if (producto) {
         abrirDetalle(producto.id);
-        showToast(`✨ Recomendación: ${producto.nombre}`);
+        showToast(`✨ Combinación perfecta: ${producto.nombre}`);
     } else {
-        // En lugar de fallback al Mojito, avisamos que no hay match exacto
-        showToast("La IA sugiere algo especial, ¡mira nuestra carta!", "info");
+        const fallback = todosLosProductos.find(p => p.destacado) || todosLosProductos[0];
+        if (fallback) abrirDetalle(fallback.id);
+        showToast("¡Sorpresa! Prueba nuestra recomendación de la casa", "info");
     }
     
     shakerState.isProcessing = false;
-    const visual = document.getElementById('shaker-img');
-    if(visual) visual.classList.remove('shaking');
 }
