@@ -579,22 +579,39 @@ function detenerDetectorMovimiento() {
 }
 
 // --- LLAMADA A LA IA ---
+// js/script.js - Reemplaza tu función procesarMezcla actual con esta:
+
 async function procesarMezcla() {
     if (shakerState.isProcessing) return;
+    
+    // Validación de seguridad: Si el menú está vacío, intentamos cargarlo
+    if (!todosLosProductos || todosLosProductos.length === 0) {
+        showToast("Cargando carta... intenta en un segundo", "warning");
+        await cargarMenu();
+        return;
+    }
+
     shakerState.isProcessing = true;
     detenerDetectorMovimiento(); 
 
-    // UI Feedback
+    // UI Feedback: Actualizamos la interfaz para el usuario
     const btn = document.getElementById('btn-mix-manual');
     const status = document.getElementById('shaker-status');
     const visual = document.getElementById('shaker-img');
     
-    btn.textContent = "Mezclando sabores...";
-    status.textContent = "🧠 La IA está probando la mezcla...";
-    visual.classList.add('shaking'); 
+    if(btn) { btn.textContent = "Mezclando sabores..."; btn.disabled = true; }
+    if(status) status.textContent = "🧠 La IA está probando la mezcla...";
+    if(visual) visual.classList.add('shaking'); 
 
-    // Preparar datos para Google Script
-    const menuSimple = todosLosProductos.map(p => p.nombre).join(', ');
+    // --- CORRECCIÓN ANTISESGO ---
+    // Clonamos el menú y lo desordenamos aleatoriamente antes de enviarlo.
+    // Esto evita que la IA elija siempre el primer producto de la lista.
+    const menuAleatorio = [...todosLosProductos]
+        .sort(() => Math.random() - 0.5)
+        .map(p => p.nombre)
+        .join(', ');
+
+    // URL de tu Google Apps Script
     const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwfGlwmuKVSy630EnyWR4gJ0k-5hPVIwWg_bXS07m0v79KahgZ8J3Eyvi_DQu1-MbOg/exec";
 
     try {
@@ -603,7 +620,7 @@ async function procesarMezcla() {
             body: JSON.stringify({
                 tipo: "Cualquiera", 
                 sabor: shakerState.seleccionados.join(', '), 
-                menu: menuSimple 
+                menu: menuAleatorio // Enviamos la lista desordenada
             }),
             headers: { "Content-Type": "text/plain" }
         });
@@ -612,17 +629,23 @@ async function procesarMezcla() {
         
         if (data.recomendacion) {
             mostrarResultadoShaker(data.recomendacion);
+        } else if (data.error) {
+            console.error("Error de la IA:", data.error);
+            throw new Error(data.error);
         } else {
-            throw new Error("Sin respuesta válida");
+            throw new Error("Respuesta de IA vacía");
         }
 
     } catch (error) {
-        console.error(error);
-        status.textContent = "Error de conexión. Intenta de nuevo.";
+        console.error("Error en la mezcla:", error);
+        if(status) status.textContent = "Error de conexión. Intenta de nuevo.";
         shakerState.isProcessing = false;
-        visual.classList.remove('shaking');
-        btn.textContent = "¡MEZCLAR AHORA!";
-        btn.disabled = false;
+        if(visual) visual.classList.remove('shaking');
+        if(btn) {
+            btn.textContent = "¡MEZCLAR AHORA!";
+            btn.disabled = false;
+        }
+        showToast("Hubo un problema con el Mixer", "error");
     }
 }
 
