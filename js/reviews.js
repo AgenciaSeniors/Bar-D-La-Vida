@@ -106,3 +106,21 @@ async function borrarOpinion(id) {
         cargarOpiniones();
     }
 }
+// Añadir al final de js/reviews.js
+function filtrarOpiniones(filtro, btn) {
+    // UI: Actualizar botones
+    document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    let filtradas = [];
+    if (filtro === 'todas') {
+        filtradas = opinionesGlobal;
+    } else if (filtro === '5') {
+        filtradas = opinionesGlobal.filter(op => op.puntuacion === 5);
+    } else if (filtro === 'alertas') {
+        // Alertas son puntuaciones de 1 o 2
+        filtradas = opinionesGlobal.filter(op => op.puntuacion <= 2);
+    }
+
+    renderizarOpiniones(filtradas);
+}
