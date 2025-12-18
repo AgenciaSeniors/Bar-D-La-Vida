@@ -271,7 +271,7 @@ function filtrar(cat, btn) {
 
 // --- DETALLES Y OPINIONES ---
 // Definir la URL de tu Google Apps Script al inicio del archivo para fácil acceso
-const URL_IA_BACKEND = "https://script.google.com/macros/s/AKfycbwfGlwmuKVSy630EnyWR4gJ0k-5hPVIwWg_bXS07m0v79KahgZ8J3Eyvi_DQu1-MbOg/exec";
+const URL_IA_BACKEND = "https://script.google.com/macros/s/AKfycbzEmZU43Lo4u54KY6tmLBjxetnqtHLIwvPTa5PYLkiRbG02B67Ad1MpGW8VWc6CprlB/exec";
 
 // --- MEJORA EN DETALLES PARA GENERAR CURIOSIDAD IA ---
 async function abrirDetalle(id) {

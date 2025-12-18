@@ -235,7 +235,7 @@ async function generarCuriosidad() {
 
     if(!nombre) { alert("Pon un nombre primero"); return; }
     
-    const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwfGlwmuKVSy630EnyWR4gJ0k-5hPVIwWg_bXS07m0v79KahgZ8J3Eyvi_DQu1-MbOg/exec";
+    const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbzEmZU43Lo4u54KY6tmLBjxetnqtHLIwvPTa5PYLkiRbG02B67Ad1MpGW8VWc6CprlB/exec";
 
     btn.disabled = true; loader.style.display = "inline"; out.value = "Pensando...";
 
