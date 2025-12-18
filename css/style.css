@@ -210,87 +210,156 @@ body {
 @keyframes slideIn { from { opacity: 0; transform: translateY(-20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
 
-/* Media Queries */
+/* --- MEDIA QUERIES (Para móviles) --- */
 @media (max-width: 768px) {
     .menu-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
     .container { padding: 15px 12px; }
     .card h3 { font-size: 1.3rem; }
+} 
+/* ↑↑ IMPORTANTE: Esta llave cierra el Media Query. ¡No la borres! ↑↑ */
+
+
+/* =========================================
+   ESTILOS DEL SHAKER VIRTUAL (Mixer IA)
+   ========================================= */
+
+/* 1. Botón Flotante (FAB) */
+.fab-ia {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #ff0055, #ff5500); /* Color Lava */
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 20px rgba(255, 0, 85, 0.4);
+    cursor: pointer;
+    z-index: 9999; /* Por encima de todo */
+    font-weight: bold;
+    font-family: 'Montserrat', sans-serif;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-/* SHAKER STYLES */
+.fab-ia:hover {
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 6px 25px rgba(255, 0, 85, 0.6);
+}
+
+.fab-text {
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+/* 2. Modal del Shaker */
 .shaker-card {
-    background: #111;
+    background: #121212; /* Fondo oscuro elegante */
     border: 1px solid #333;
     text-align: center;
-    max-width: 360px;
+    width: 90%;
+    max-width: 380px;
+    padding: 30px 20px;
+    border-radius: 20px;
+    position: relative;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    /* Aseguramos que se centre si modal.css no lo hace */
+    margin: auto; 
 }
 
-.shaker-title { color: white; margin-bottom: 5px; }
-.shaker-subtitle { color: #888; font-size: 0.85rem; margin-bottom: 20px; }
+.shaker-title { 
+    color: white; 
+    margin-bottom: 5px; 
+    font-family: var(--font-neon); 
+    font-size: 2rem;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
 
-/* Grid de Esencias */
+.shaker-subtitle { 
+    color: #888; 
+    font-size: 0.9rem; 
+    margin-bottom: 25px; 
+    font-family: var(--font-body);
+}
+
+/* 3. Grid de Ingredientes */
 .essences-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin-bottom: 25px;
+    gap: 12px;
+    margin-bottom: 30px;
 }
 
 .essence-btn {
-    background: #222;
-    border: 1px solid #444;
+    background: #1e1e1e;
+    border: 1px solid #333;
     border-radius: 12px;
-    padding: 10px;
+    padding: 15px 5px;
     color: #ccc;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 5px;
+    gap: 8px;
 }
 
-.essence-btn span { font-size: 1.5rem; }
-.essence-btn small { font-size: 0.7rem; text-transform: uppercase; }
+.essence-btn span { font-size: 1.8rem; }
+.essence-btn small { font-size: 0.75rem; text-transform: uppercase; font-weight: 600; }
+
+.essence-btn:hover { background: #252525; }
 
 .essence-btn.selected {
-    background: var(--gold);
+    background: var(--gold, #FFD700); /* Fallback a dorado si no existe var */
     color: black;
-    border-color: var(--gold);
+    border-color: var(--gold, #FFD700);
     transform: scale(1.05);
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
 }
 
-/* Coctelera Visual */
+/* 4. Animación Coctelera */
 .shaker-container {
-    height: 120px;
+    height: 140px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
 }
 
 .shaker-visual {
-    width: 80px;
-    height: 80px;
-    background: #2a2a35;
+    width: 90px;
+    height: 90px;
+    background: #1e1e1e;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px dashed #555;
+    border: 2px dashed #444;
     transition: 0.3s;
+    position: relative;
 }
 
+.shaker-visual .material-icons { font-size: 3.5rem; color: #555; transition: 0.3s; }
+
+/* Estado: Listo para mezclar */
 .shaker-visual.ready {
-    background: linear-gradient(135deg, var(--gold), #ff9800);
+    background: linear-gradient(135deg, #FFD700, #FFA500);
     border: 2px solid white;
-    box-shadow: 0 0 20px rgba(255, 165, 0, 0.5);
+    box-shadow: 0 0 25px rgba(255, 165, 0, 0.4);
+    animation: pulse 2s infinite;
 }
+.shaker-visual.ready .material-icons { color: white; }
 
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 165, 0, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(255, 165, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 165, 0, 0); } }
+
+/* Estado: Agitando */
 .shaker-visual.shaking {
     animation: shake-hard 0.5s ease-in-out infinite;
+    background: #ff0055; /* Rojo intenso al agitar */
+    border-color: #ff0055;
 }
 
 @keyframes shake-hard {
@@ -304,4 +373,10 @@ body {
     100% { transform: translate(1px, -2px) rotate(-10deg); }
 }
 
-.shaker-status { margin-top: 10px; font-size: 0.9rem; color: #aaa; min-height: 20px;}
+.shaker-status { 
+    margin-top: 15px; 
+    font-size: 0.9rem; 
+    color: #666; 
+    font-weight: 500;
+    min-height: 20px;
+}
