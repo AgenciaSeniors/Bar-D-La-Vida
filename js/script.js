@@ -207,37 +207,36 @@ async function cargarMenu() {
 function renderizarMenu(lista) {
     const contenedor = document.getElementById('menu-grid');
     if (!contenedor) return;
-    
     contenedor.innerHTML = '';
 
     if (!lista || lista.length === 0) {
-        contenedor.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:#666;"><h4>Carta Vacía</h4></div>';
+        contenedor.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:#666;"><h4>Carta Vacía</h4></div>';
         return;
     }
 
     const html = lista.map(item => {
-        // Lógica Agotado
         const esAgotado = item.estado === 'agotado';
-        const claseAgotado = esAgotado ? 'agotado' : '';
         
-        // Si está agotado mostramos cartel ROJO, si es destacado mostramos corona
         let badgeHTML = '';
         if (esAgotado) {
-            badgeHTML = `<span class="badge-agotado">AGOTADO</span>`;
+            // Estilo Agotado en Rojo Neon
+            badgeHTML = `<span class="badge-agotado" style="color:var(--neon-red); border-color:var(--neon-red);">AGOTADO</span>`;
         } else if (item.destacado) {
-            badgeHTML = `<span class="badge-destacado">👑 TOP</span>`;
+            // Estilo Destacado
+            badgeHTML = `<span class="badge-destacado">🔥 HOT</span>`;
         }
 
-        const img = item.imagen_url || 'https://via.placeholder.com/300';
+        const img = item.imagen_url || 'https://via.placeholder.com/300x300/000000/333333?text=No+Image';
         const rating = item.ratingPromedio ? `★ ${item.ratingPromedio}` : '';
-        
-        // Nota: Si está agotado, quitamos el onclick para que no abran el detalle
         const accionClick = esAgotado ? '' : `onclick="abrirDetalle(${item.id})"`;
+        const claseAgotado = esAgotado ? 'agotado' : '';
 
         return `
             <div class="card ${claseAgotado}" ${accionClick}>
                 ${badgeHTML}
-                <div class="img-box"><img src="${img}" loading="lazy" alt="${item.nombre}"></div>
+                <div class="img-box">
+                    <img src="${img}" loading="lazy" alt="${item.nombre}">
+                </div>
                 <div class="info">
                     <h3>${item.nombre}</h3>
                     <p class="short-desc">${item.descripcion || ''}</p>
@@ -440,4 +439,10 @@ function showToast(mensaje, tipo = 'success') {
         toast.style.animation = 'fadeOut 0.4s forwards';
         setTimeout(() => toast.remove(), 400); // Esperar a que termine la animación
     }, 4000);
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => console.log('PWA registrada (Modo Cuba activado)'))
+    .catch((err) => console.log('Error PWA:', err));
 }

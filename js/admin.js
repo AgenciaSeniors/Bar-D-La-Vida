@@ -347,3 +347,9 @@ async function eliminarProducto(id) {
 
 // INICIALIZAR
 document.addEventListener('DOMContentLoaded', checkAuth);
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => console.log('PWA registrada (Modo Cuba activado)'))
+    .catch((err) => console.log('Error PWA:', err));
+}

@@ -1,80 +1,212 @@
-/* style.css - Estilos Globales y Menú Público */
+/* style.css - Identidad Visual: Neon Noir */
+
+/* 1. IMPORTACIÓN DE FUENTES (Yellowtail para Neón, Montserrat para lectura) */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;800&family=Yellowtail&display=swap');
 
 :root {
-    --bg-main: #0a0a0a;
-    --bg-surface: #141414;
-    --gold: #FFD700;
-    --gold-glow: rgba(255, 215, 0, 0.25);
-    --text-primary: #ffffff;
-    --text-secondary: #b0b0b0;
-    --glass-border: 1px solid rgba(255, 255, 255, 0.08);
-    --red-danger: #ff5252;
-    --green-success: #00e676;
+    /* --- PALETA NEON NOIR --- */
+    --bg-noir: #050505;       /* Fondo Base: Negro Profundo */
+    --bg-surface: #0f0f0f;    /* Superficies: Casi negro */
+    
+    /* Colores Neón (Alta Saturación) */
+    --neon-red: #FF003C;      /* Rojo Vida (Botones, Ofertas) */
+    --neon-green: #CCFF00;    /* Verde Lima (Precios) */
+    --neon-cyan: #00F0FF;     /* Cian Eléctrico (Hielo, Detalles sutiles) */
+    --neon-magenta: #BD00FF;  /* Magenta (Títulos) */
+    
+    --text-primary: #FFFFFF;  /* Blanco Puro (Lectura) */
+    --text-secondary: #cccccc;
+    
+    /* Tipografías */
+    --font-neon: 'Yellowtail', cursive;     /* Títulos Artísticos */
+    --font-body: 'Montserrat', sans-serif;  /* Textos Funcionales */
+    
+    /* Efectos */
+    --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+    --neon-shadow: 0 0 10px rgba(189, 0, 255, 0.3);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 body { 
-    background-color: var(--bg-main); 
+    background-color: var(--bg-noir); 
     color: var(--text-primary); 
-    font-family: 'Montserrat', sans-serif; 
+    font-family: var(--font-body); 
     padding-bottom: 100px;
     overflow-x: hidden;
 }
 
-/* --- HERO & HEADER (Cliente) --- */
-.hero-optimizado { height: 35vh; position: relative; overflow: hidden; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; background: #000; box-shadow: 0 10px 40px -10px black; }
-.hero-bg { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 0; animation: zoomBg 20s infinite alternate; }
+/* --- HERO & HEADER --- */
+.hero-optimizado { 
+    height: 35vh; 
+    position: relative; 
+    overflow: hidden; 
+    border-bottom: 2px solid var(--neon-cyan); /* Borde neón sutil */
+    background: #000; 
+    box-shadow: 0 10px 40px -10px black;
+}
+
+.hero-bg { 
+    width: 100%; height: 100%; object-fit: cover; 
+    position: absolute; top: 0; left: 0; z-index: 0; 
+    opacity: 0.7; /* Oscurecido para resaltar el texto */
+    animation: zoomBg 20s infinite alternate;
+}
 @keyframes zoomBg { from { transform: scale(1); } to { transform: scale(1.1); } }
-.overlay { position: relative; z-index: 1; width: 100%; height: 100%; background: linear-gradient(to top, #0a0a0a 5%, rgba(0,0,0,0.5)); display: flex; flex-direction: column; justify-content: flex-end; padding: 30px; }
-.logo-area h1 { font-family: 'Playfair Display', serif; color: var(--gold); font-size: 2.5rem; margin: 0; text-shadow: 0 4px 15px rgba(0,0,0,0.8); }
 
-/* --- BUSCADOR (Cliente) --- */
+.overlay { 
+    position: relative; z-index: 1; width: 100%; height: 100%; 
+    background: linear-gradient(to top, var(--bg-noir) 15%, rgba(5,5,5,0.4)); 
+    display: flex; flex-direction: column; justify-content: flex-end; padding: 30px; 
+}
+
+/* LOGOTIPO (Identidad Visual) */
+.logo-area { text-align: center; }
+.logo-area h1 { 
+    font-family: var(--font-neon); 
+    color: var(--text-primary); 
+    font-size: 3.5rem; 
+    margin: 0; 
+    text-shadow: 0 0 10px var(--neon-magenta), 0 0 20px var(--neon-red); /* Doble brillo */
+    line-height: 1;
+}
+/* La palabra 'Vida' segmentada con efecto */
+.logo-accent { color: var(--neon-red); text-shadow: 0 0 15px var(--neon-red); }
+
+.logo-area p {
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    letter-spacing: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--neon-cyan);
+    margin-top: 5px;
+    opacity: 0.9;
+}
+
+/* --- BUSCADOR --- */
 .search-wrapper { padding: 0 20px; margin-top: -25px; position: relative; z-index: 20; }
-.search-box { background: rgba(30, 30, 30, 0.9); backdrop-filter: blur(15px); border: var(--glass-border); border-radius: 50px; display: flex; align-items: center; padding: 5px 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-#search-input { width: 100%; padding: 12px 0; background: transparent; border: none; color: white; font-size: 1rem; outline: none; }
+.search-box { 
+    background: rgba(20, 20, 20, 0.95); 
+    backdrop-filter: blur(10px); 
+    border: 1px solid var(--neon-magenta); 
+    border-radius: 50px; display: flex; align-items: center; padding: 5px 20px; 
+    box-shadow: 0 0 20px rgba(189, 0, 255, 0.15);
+}
+#search-input { width: 100%; padding: 12px 0; background: transparent; border: none; color: white; font-family: var(--font-body); font-size: 1rem; outline: none; }
+.search-icon { color: var(--neon-cyan); margin-right: 10px; font-size: 1.2rem; }
 
-/* --- FILTROS (Cliente) --- */
-.filters-container { position: sticky; top: 0; z-index: 90; background: rgba(10, 10, 12, 0.9); backdrop-filter: blur(10px); padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+/* --- FILTROS --- */
+.filters-container { 
+    position: sticky; top: 0; z-index: 90; 
+    background: rgba(5, 5, 5, 0.95); 
+    backdrop-filter: blur(12px); 
+    padding: 15px 0; border-bottom: 1px solid #222; 
+}
 .filters { display: flex; gap: 10px; padding: 0 20px; overflow-x: auto; scrollbar-width: none; }
-.filter-btn { background: transparent; color: #888; border: 1px solid rgba(255,255,255,0.1); padding: 8px 20px; border-radius: 100px; white-space: nowrap; cursor: pointer; transition: 0.3s; }
-.filter-btn.active { background: var(--gold); color: black; border-color: var(--gold); font-weight: 800; transform: scale(1.05); box-shadow: 0 0 15px rgba(212,175,55,0.4); }
+.filter-btn { 
+    background: transparent; color: #fff; 
+    border: 1px solid #333; 
+    padding: 8px 20px; border-radius: 100px; 
+    font-family: var(--font-body); font-size: 0.85rem;
+    cursor: pointer; transition: 0.3s; white-space: nowrap;
+}
+.filter-btn.active { 
+    background: var(--bg-noir); 
+    color: var(--neon-cyan); 
+    border-color: var(--neon-cyan); 
+    font-weight: 700; 
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
+}
 
-/* --- GRID MENÚ (Cliente) --- */
+/* --- GRID MENÚ --- */
 .container { padding: 25px 20px; }
+.section-title { 
+    font-family: var(--font-neon); 
+    color: var(--neon-magenta); 
+    font-size: 2.2rem; margin-bottom: 25px; 
+    text-shadow: 0 0 8px rgba(189, 0, 255, 0.4);
+}
+
 .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; }
-.card { background: var(--bg-surface); border-radius: 20px; overflow: hidden; border: var(--glass-border); position: relative; cursor: pointer; box-shadow: 0 10px 20px rgba(0,0,0,0.3); opacity: 1 !important; transform: translateY(0) !important; }
-.img-box { height: 160px; background: #222; }
-.img-box img { width: 100%; height: 100%; object-fit: cover; }
+
+/* TARJETA DE PRODUCTO */
+.card { 
+    background: var(--bg-surface); 
+    border-radius: 16px; overflow: hidden; 
+    border: 1px solid #222; 
+    position: relative; cursor: pointer; 
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.card:active { transform: scale(0.98); }
+
+.img-box { height: 160px; background: #111; position: relative; }
+.img-box img { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; }
+
 .info { padding: 15px; }
-.card h3 { font-size: 1rem; color: white; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.price { color: var(--gold); font-weight: 700; }
-.badge-destacado { position: absolute; top: 10px; right: 10px; background: var(--gold); color: black; padding: 4px 8px; border-radius: 10px; font-size: 0.6rem; font-weight: 800; z-index: 10; }
+.card h3 { 
+    font-family: var(--font-neon); /* Título artístico */
+    font-size: 1.5rem; 
+    color: var(--text-primary); 
+    margin-bottom: 5px; 
+    font-weight: 400;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.short-desc {
+    font-family: var(--font-body);
+    font-size: 0.75rem; color: #aaa;
+    margin-bottom: 12px; line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
 
-/* Estilo Agotado */
-.card.agotado { opacity: 0.7; filter: grayscale(80%); pointer-events: none; }
-.badge-agotado { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-10deg); background-color: #ff5252; color: white; padding: 10px 20px; font-weight: 900; font-size: 1.2rem; border: 2px solid white; border-radius: 8px; z-index: 20; box-shadow: 0 5px 15px rgba(0,0,0,0.5); text-transform: uppercase; letter-spacing: 2px; }
+.card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
 
-/* --- MODALES BÁSICOS (Cliente) --- */
-.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(5px); }
-.modal.active { display: flex; }
-.modal-content { background: #181818; width: 100%; max-width: 450px; border-radius: 25px; border: 1px solid #333; overflow: hidden; position: relative; }
-.close-btn-float { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.5); color: white; width: 35px; height: 35px; border-radius: 50%; text-align: center; line-height: 35px; cursor: pointer; z-index: 20; }
-.btn-big-action { width: 100%; background: var(--gold); border: none; padding: 15px; border-radius: 12px; font-weight: 800; cursor: pointer; margin-top: 15px; transition: 0.3s; }
-.input-stylish { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: white; border-radius: 8px; font-size: 1rem; outline: none; transition: 0.3s; }
-.input-stylish:focus { border-color: var(--gold); background: #2a2a2a; }
+/* PRECIOS EN VERDE LIMA (Regla visual) */
+.price { 
+    color: var(--neon-green); 
+    font-family: var(--font-body); 
+    font-weight: 800; font-size: 1.1rem; 
+    text-shadow: 0 0 5px rgba(204, 255, 0, 0.2);
+}
 
-/* --- TOASTS (Notificaciones) --- */
+.rating-pill { color: #888; font-size: 0.8rem; }
+
+/* BADGES (Etiquetas) */
+.badge-destacado { 
+    position: absolute; top: 10px; right: 10px; 
+    background: var(--neon-red); color: white; 
+    padding: 4px 10px; border-radius: 4px; 
+    font-size: 0.65rem; font-weight: 800; z-index: 10; font-family: var(--font-body);
+    box-shadow: 0 0 10px var(--neon-red);
+}
+
+.card.agotado { opacity: 0.5; filter: grayscale(100%); pointer-events: none; }
+.badge-agotado { 
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-10deg); 
+    color: var(--neon-red); border: 2px solid var(--neon-red); 
+    padding: 8px 15px; font-weight: 900; font-size: 1rem; border-radius: 6px; z-index: 20; 
+}
+
+/* --- TOASTS --- */
 #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 400px; pointer-events: none; }
-.toast { background: rgba(20, 20, 20, 0.95); color: white; padding: 16px 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); display: flex; align-items: center; gap: 15px; animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; pointer-events: auto; font-family: 'Montserrat', sans-serif; font-size: 0.9rem; }
-.toast.success { border-left: 4px solid var(--gold); }
-.toast.error { border-left: 4px solid var(--red-danger); }
+.toast { 
+    background: rgba(20, 20, 20, 0.95); color: white; padding: 16px 20px; 
+    border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+    border: 1px solid #333; backdrop-filter: blur(10px); 
+    display: flex; align-items: center; gap: 15px; pointer-events: auto; 
+    font-family: var(--font-body); font-size: 0.9rem; 
+    animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; 
+}
+.toast.success { border-left: 4px solid var(--neon-green); }
+.toast.error { border-left: 4px solid var(--neon-red); }
+
 @keyframes slideIn { from { opacity: 0; transform: translateY(-20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
 
-/* Media Queries Cliente */
+/* Media Queries */
 @media (max-width: 768px) {
     .menu-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
     .container { padding: 15px 12px; }
-    .card h3 { font-size: 0.9rem; }
+    .card h3 { font-size: 1.3rem; }
 }
