@@ -1,6 +1,4 @@
-// js/script.js - Lógica Cliente Completa con Integración IA
-// Configuración de la URL de tu Google Apps Script (Backend IA)
-const URL_IA_BACKEND = "https://script.google.com/macros/s/AKfycbwfGlwmuKVSy630EnyWR4gJ0k-5hPVIwWg_bXS07m0v79KahgZ8J3Eyvi_DQu1-MbOg/exec";
+// js/script.js - Lógica Cliente (Refactorizado)
 
 let todosLosProductos = [];
 let productoActual = null;
@@ -8,7 +6,7 @@ let puntuacion = 0;
 let searchTimeout;
 
 document.addEventListener('DOMContentLoaded', () => {
-    checkWelcome(); 
+    checkWelcome(); // Lógica de visitas mejorada
     cargarMenu();
     updateConnectionStatus();
 });
@@ -19,22 +17,30 @@ async function checkWelcome() {
     const modoAnonimo = localStorage.getItem('modo_anonimo');
     const modal = document.getElementById('modal-welcome');
 
+    // Si ya es cliente o eligió ser anónimo
     if (clienteId || modoAnonimo === 'true') {
         if (modal) modal.style.display = 'none';
+
+        // LÓGICA DE VISITA RECURRENTE (Solo para registrados)
         if (clienteId) {
             const ultimaVisita = localStorage.getItem('ultima_visita_ts');
             const ahora = Date.now();
             const HORAS_12 = 12 * 60 * 60 * 1000;
 
             if (!ultimaVisita || (ahora - parseInt(ultimaVisita)) > HORAS_12) {
+                console.log("Registrando visita recurrente...");
                 const { error } = await supabaseClient.from('visitas').insert([{
                     cliente_id: clienteId,
                     motivo: 'Regreso al Menú'
                 }]);
-                if (!error) localStorage.setItem('ultima_visita_ts', ahora.toString());
+
+                if (!error) {
+                    localStorage.setItem('ultima_visita_ts', ahora.toString());
+                }
             }
         }
     } else {
+        // Usuario nuevo: Mostrar modal
         if (modal) {
             modal.style.display = 'flex';
             setTimeout(() => modal.classList.add('active'), 10);
@@ -42,7 +48,10 @@ async function checkWelcome() {
     }
 }
 
-function cerrarWelcome() { activarModoAnonimo(); }
+// FIX: Función solicitada para el botón anónimo
+function cerrarWelcome() {
+    activarModoAnonimo();
+}
 
 function activarModoAnonimo() {
     localStorage.setItem('modo_anonimo', 'true');
@@ -54,10 +63,16 @@ function activarModoAnonimo() {
     showToast("Modo Explorador Anónimo", "info");
 }
 
+// FIX: Validación telefónica corregida
 function limpiarTelefono(input) {
     if (!input) return "";
-    let limpio = input.replace(/\D/g, ''); 
-    if (limpio.length === 10 && limpio.startsWith('53')) limpio = limpio.substring(2);
+    let limpio = input.replace(/\D/g, ''); // Eliminar todo lo que no sea dígito
+    
+    // Si tiene 10 dígitos y empieza por 53 (formato internacional sin +), quitamos el 53
+    if (limpio.length === 10 && limpio.startsWith('53')) {
+        limpio = limpio.substring(2);
+    }
+    // NOTA: Si el usuario escribe 8 dígitos (ej: 55555555), lo dejamos pasar.
     return limpio;
 }
 
@@ -69,34 +84,54 @@ async function registrarBienvenida() {
     const nombre = inputNombre.value ? inputNombre.value.trim() : '';
     const telefono = limpiarTelefono(inputPhone.value);
 
+    // Validación básica: requerimos al menos 8 dígitos para Cuba
     if (!nombre || !telefono || telefono.length < 8) {
-        showToast("Nombre y teléfono válido requeridos.", "warning");
+        showToast("Nombre y teléfono válido (min 8 dígitos) requeridos.", "warning");
         return;
     }
 
     if(btn) { btn.textContent = "Entrando..."; btn.disabled = true; }
 
     try {
-        let { data: cliente } = await supabaseClient.from('clientes').select('id').eq('telefono', telefono).single();
+        // Buscar o crear cliente
+        let { data: cliente } = await supabaseClient
+            .from('clientes')
+            .select('id')
+            .eq('telefono', telefono)
+            .single();
+
         let clienteId = cliente ? cliente.id : null;
 
         if (!clienteId) {
-            const { data: nuevo } = await supabaseClient.from('clientes').insert([{ nombre, telefono }]).select().single();
+            const { data: nuevo } = await supabaseClient
+                .from('clientes')
+                .insert([{ nombre, telefono }])
+                .select()
+                .single();
             clienteId = nuevo.id;
         }
 
-        await supabaseClient.from('visitas').insert([{ cliente_id: clienteId, motivo: 'Ingreso Inicial' }]);
+        // Registrar primera visita
+        await supabaseClient.from('visitas').insert([{
+            cliente_id: clienteId,
+            motivo: 'Ingreso Inicial'
+        }]);
 
+        // Guardar sesión local
         localStorage.setItem('cliente_id', clienteId);
         localStorage.setItem('cliente_nombre', nombre);
-        localStorage.removeItem('modo_anonimo');
+        localStorage.removeItem('modo_anonimo'); // Ya no es anónimo
         localStorage.setItem('ultima_visita_ts', Date.now().toString());
 
+        // Cerrar modal
         const modal = document.getElementById('modal-welcome');
         modal.classList.remove('active');
         setTimeout(() => modal.style.display = 'none', 400);
         showToast(`¡Bienvenido, ${nombre}!`, "success");
+
     } catch (err) {
+        console.error("Error registro:", err);
+        // Fallback: permitir entrada local en caso de error de red crítico
         cerrarWelcome(); 
     } finally {
         if(btn) { btn.textContent = "INGRESAR"; btn.disabled = false; }
@@ -104,59 +139,109 @@ async function registrarBienvenida() {
 }
 
 // --- MENÚ Y PRODUCTOS ---
+// FIX: Mejor manejo de estados (Loading, Error, Vacío)
 async function cargarMenu() {
     const grid = document.getElementById('menu-grid');
-    const menuCache = localStorage.getItem('menu_cache');
     
+    // 1. Mostrar estado de carga si no hay caché inmediata
+    const menuCache = localStorage.getItem('menu_cache');
     if (menuCache) {
         todosLosProductos = JSON.parse(menuCache);
         renderizarMenu(todosLosProductos);
-    } else if(grid) {
-        grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px;"><span class="material-icons spin">refresh</span><p>Cargando carta...</p></div>`;
+    } else {
+        if(grid) grid.innerHTML = `
+            <div style="grid-column:1/-1; text-align:center; padding:40px;">
+                <span class="material-icons spin" style="font-size:2rem; color:var(--neon-cyan);">refresh</span>
+                <p style="color:#888; margin-top:10px;">Cargando carta...</p>
+            </div>`;
     }
 
+    // 2. Network Update
     try {
-        let { data: productos, error } = await supabaseClient.from('productos').select(`*, opiniones(puntuacion)`).eq('activo', true).order('destacado', { ascending: false });
+        if (typeof supabaseClient === 'undefined') throw new Error("Supabase no definido");
+
+        let { data: productos, error } = await supabaseClient
+            .from('productos')
+            .select(`*, opiniones(puntuacion)`)
+            .eq('activo', true)
+            .order('destacado', { ascending: false })
+            .order('id', { ascending: false });
+
         if (error) throw error;
 
+        // Manejo explícito de carta vacía desde BD
+        if (!productos || productos.length === 0) {
+            todosLosProductos = [];
+            localStorage.removeItem('menu_cache');
+            renderizarMenu([]); // Renderizará el mensaje de "Carta Vacía"
+            return;
+        }
+
+        // Calcular ratings
         const productosProcesados = productos.map(prod => {
             const opiniones = prod.opiniones || [];
+            const total = opiniones.length;
             const suma = opiniones.reduce((acc, curr) => acc + curr.puntuacion, 0);
-            prod.ratingPromedio = opiniones.length ? (suma / opiniones.length).toFixed(1) : null;
+            prod.ratingPromedio = total ? (suma / total).toFixed(1) : null;
             return prod;
         });
 
         localStorage.setItem('menu_cache', JSON.stringify(productosProcesados));
         todosLosProductos = productosProcesados;
         renderizarMenu(todosLosProductos);
+
     } catch (err) {
-        if(!menuCache && grid) grid.innerHTML = `<div style="grid-column:1/-1; text-align:center;"><p>Error de conexión</p><button onclick="cargarMenu()">Reintentar</button></div>`;
+        console.warn("Offline o error:", err);
+        // Si no tenemos caché y falló la red
+        if(!menuCache && grid) {
+            grid.innerHTML = `
+                <div style="grid-column:1/-1; text-align:center; padding:30px;">
+                    <span class="material-icons" style="font-size:3rem; color:var(--neon-red);">wifi_off</span>
+                    <h4 style="margin:10px 0;">Error de Conexión</h4>
+                    <button class="btn-modal-action" onclick="cargarMenu()" style="width:auto; padding:0 20px;">REINTENTAR</button>
+                </div>`;
+        }
     }
 }
 
 function renderizarMenu(lista) {
     const contenedor = document.getElementById('menu-grid');
     if (!contenedor) return;
+    contenedor.innerHTML = '';
+
     if (!lista || lista.length === 0) {
-        contenedor.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px;"><h4>Sin resultados</h4></div>';
+        contenedor.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px;"><h4>Carta Vacía o Sin Resultados</h4></div>';
         return;
     }
 
-    contenedor.innerHTML = lista.map(item => {
+    const html = lista.map(item => {
         const esAgotado = item.estado === 'agotado';
-        const img = item.imagen_url || 'img/logo.png';
+        let badgeHTML = '';
+        
+        if (esAgotado) badgeHTML = `<span class="badge-agotado" style="color:var(--neon-red); border:1px solid var(--neon-red);">AGOTADO</span>`;
+        else if (item.destacado) badgeHTML = `<span class="badge-destacado">🔥 HOT</span>`;
+
+        const img = item.imagen_url || 'img/logo.png'; // Fallback a logo local
         const rating = item.ratingPromedio ? `★ ${item.ratingPromedio}` : '';
+        const accionClick = esAgotado ? '' : `onclick="abrirDetalle(${item.id})"`;
+        const claseAgotado = esAgotado ? 'agotado' : '';
+
         return `
-            <div class="card ${esAgotado ? 'agotado' : ''}" ${esAgotado ? '' : `onclick="abrirDetalle(${item.id})"`}>
-                ${item.destacado ? '<span class="badge-destacado">🔥 HOT</span>' : ''}
-                <div class="img-box"><img src="${img}" alt="${item.nombre}"></div>
+            <div class="card ${claseAgotado}" ${accionClick}>
+                ${badgeHTML}
+                <div class="img-box"><img src="${img}" loading="lazy" alt="${item.nombre}"></div>
                 <div class="info">
                     <h3>${item.nombre}</h3>
                     <p class="short-desc">${item.descripcion || ''}</p>
-                    <div class="card-footer"><span class="price">$${item.precio}</span><span class="rating-pill">${rating}</span></div>
+                    <div class="card-footer">
+                         <span class="price">$${item.precio}</span>
+                         <span class="rating-pill">${rating}</span>
+                    </div>
                 </div>
-            </div>`;
+            </div>
+        `;
     }).join('');
+    contenedor.innerHTML = html;
 }
 
 // --- BÚSQUEDA Y FILTROS ---
@@ -166,7 +251,10 @@ if(searchInput) {
         clearTimeout(searchTimeout);
         const term = e.target.value.toLowerCase();
         searchTimeout = setTimeout(() => {
-            const lista = todosLosProductos.filter(p => (p.nombre || '').toLowerCase().includes(term) || (p.descripcion || '').toLowerCase().includes(term));
+            const lista = todosLosProductos.filter(p => 
+                (p.nombre || '').toLowerCase().includes(term) || 
+                (p.descripcion || '').toLowerCase().includes(term)
+            );
             renderizarMenu(lista);
         }, 300);
     });
@@ -175,34 +263,42 @@ if(searchInput) {
 function filtrar(cat, btn) {
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     if(btn) btn.classList.add('active');
+    if(searchInput) searchInput.value = '';
+    
     const lista = cat === 'todos' ? todosLosProductos : todosLosProductos.filter(p => p.categoria === cat);
     renderizarMenu(lista);
 }
 
-// --- DETALLES Y CURIOSIDAD IA ---
+// --- DETALLES Y OPINIONES ---
+// Definir la URL de tu Google Apps Script al inicio del archivo para fácil acceso
+const URL_IA_BACKEND = "https://script.google.com/macros/s/AKfycbzEmZU43Lo4u54KY6tmLBjxetnqtHLIwvPTa5PYLkiRbG02B67Ad1MpGW8VWc6CprlB/exec";
+
+// --- MEJORA EN DETALLES PARA GENERAR CURIOSIDAD IA ---
 async function abrirDetalle(id) {
     productoActual = todosLosProductos.find(p => p.id === id);
     if (!productoActual) return;
 
+    const imgEl = document.getElementById('det-img');
+    if(imgEl) imgEl.src = productoActual.imagen_url || 'img/logo.png';
+    
     setText('det-titulo', productoActual.nombre);
     setText('det-desc', productoActual.descripcion);
     setText('det-precio', `$${productoActual.precio}`);
     setText('det-rating-big', productoActual.ratingPromedio ? `★ ${productoActual.ratingPromedio}` : '★ --');
-    
-    const imgEl = document.getElementById('det-img');
-    if(imgEl) imgEl.src = productoActual.imagen_url || 'img/logo.png';
 
     const box = document.getElementById('box-curiosidad');
-    const textCur = document.getElementById('det-curiosidad');
+    const textCuriosidad = document.getElementById('det-curiosidad');
 
-    // Lógica Curiosidad IA Dinámica
+    // Si el producto ya tiene curiosidad en la BD, la mostramos
     if (productoActual.curiosidad && productoActual.curiosidad.length > 5) {
         if(box) box.style.display = "block";
         setText('det-curiosidad', productoActual.curiosidad);
     } else {
+        // Si no tiene, llamamos a la IA dinámicamente
         if(box) {
             box.style.display = "block";
-            textCur.innerHTML = "<i>Generando dato curioso con IA...</i>";
+            textCuriosidad.innerHTML = "<i>Consultando al historiador...</i>";
+            
             try {
                 const res = await fetch(URL_IA_BACKEND, {
                     method: 'POST',
@@ -210,10 +306,14 @@ async function abrirDetalle(id) {
                 });
                 const data = await res.json();
                 if(data.curiosidad) {
-                    textCur.textContent = data.curiosidad;
-                    productoActual.curiosidad = data.curiosidad;
-                } else { box.style.display = "none"; }
-            } catch (e) { box.style.display = "none"; }
+                    textCuriosidad.textContent = data.curiosidad;
+                    productoActual.curiosidad = data.curiosidad; // Guardar temporalmente
+                } else {
+                    box.style.display = "none";
+                }
+            } catch (e) {
+                box.style.display = "none";
+            }
         }
     }
     
@@ -228,15 +328,17 @@ function cerrarDetalle() {
     setTimeout(() => modal.style.display = 'none', 350);
 }
 
-// --- OPINIONES ---
 function abrirOpinionDesdeDetalle() {
     cerrarDetalle();
     const modal = document.getElementById('modal-opinion');
     setTimeout(() => {
         modal.style.display = 'flex';
         setTimeout(() => modal.classList.add('active'), 10);
+        
+        const nombreGuardado = localStorage.getItem('cliente_nombre');
         const inputNombre = document.getElementById('cliente-nombre');
-        if(inputNombre) inputNombre.value = localStorage.getItem('cliente_nombre') || '';
+        if(nombreGuardado && inputNombre) inputNombre.value = nombreGuardado;
+
         puntuacion = 0;
         actualizarEstrellas();
     }, 300);
@@ -248,6 +350,7 @@ function cerrarModalOpiniones() {
     setTimeout(() => modal.style.display = 'none', 350);
 }
 
+// Estrellas
 const starsContainer = document.getElementById('stars-container');
 if(starsContainer) {
     starsContainer.addEventListener('click', (e) => {
@@ -268,29 +371,40 @@ function actualizarEstrellas() {
 
 async function enviarOpinion() {
     if (puntuacion === 0) { showToast("¡Marca las estrellas!", "warning"); return; }
+
+    // Rate Limiting (Anti-Spam Local)
     const LAST_OPINION = 'last_opinion_ts';
     const lastTime = localStorage.getItem(LAST_OPINION);
-    if (lastTime && (Date.now() - parseInt(lastTime)) < 12 * 60 * 60 * 1000) {
+    const ahora = Date.now();
+    
+    if (lastTime && (ahora - parseInt(lastTime)) < 12 * 60 * 60 * 1000) {
         showToast("Solo puedes opinar cada 12 horas.", "warning");
         return;
     }
 
+    const nombre = document.getElementById('cliente-nombre').value || "Anónimo";
+    const comentario = document.getElementById('cliente-comentario').value;
     const btn = document.querySelector('#modal-opinion .btn-big-action');
+
     if(btn) { btn.textContent = "Enviando..."; btn.disabled = true; }
 
     const { error } = await supabaseClient.from('opiniones').insert([{
         producto_id: productoActual.id,
-        cliente_nombre: document.getElementById('cliente-nombre').value || "Anónimo",
-        comentario: document.getElementById('cliente-comentario').value, 
+        cliente_nombre: nombre,
+        comentario: comentario, 
         puntuacion: puntuacion
     }]);
 
     if (!error) {
-        localStorage.setItem(LAST_OPINION, Date.now().toString());
-        showToast("¡Gracias!", "success");
+        localStorage.setItem(LAST_OPINION, ahora.toString());
+        showToast("¡Gracias por tu opinión!", "success");
         cerrarModalOpiniones();
+        document.getElementById('cliente-comentario').value = "";
         cargarMenu();
+    } else {
+        showToast("Error: " + error.message, "error");
     }
+    
     if(btn) { btn.textContent = "ENVIAR"; btn.disabled = false; }
 }
 
@@ -320,12 +434,13 @@ function updateConnectionStatus() {
     }
 }
 
-window.addEventListener('online', () => { updateConnectionStatus(); showToast("Conexión restaurada"); });
+window.addEventListener('online', () => { updateConnectionStatus(); showToast("Conexión restaurada"); cargarMenu(); });
 window.addEventListener('offline', () => { updateConnectionStatus(); showToast("Modo Offline", "warning"); });
 
 // ==========================================
-// 🌪️ SHAKER VIRTUAL (MIXER IA)
+// 🌪️ SHAKER VIRTUAL (Mixer IA)
 // ==========================================
+
 const ESENCIAS = [
     { id: 'fresco', icono: '🧊', nombre: 'Fresco' },
     { id: 'dulce', icono: '🍬', nombre: 'Dulce' },
@@ -335,16 +450,25 @@ const ESENCIAS = [
     { id: 'party', icono: '🎉', nombre: 'Fiesta' }
 ];
 
-let shakerState = { seleccionados: [], isShaking: false, shakeCount: 0, isProcessing: false };
-let watchID = null;
+let shakerState = {
+    seleccionados: [],
+    isShaking: false,
+    shakeCount: 0
+};
+
+let watchID = null; // Para el acelerómetro
 
 function abrirShaker() {
     const modal = document.getElementById('modal-shaker');
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('active'), 10);
+    
+    // Reiniciar estado
     shakerState.seleccionados = [];
     renderizarEsencias();
     actualizarEstadoShaker();
+    
+    // FIX: Intentar pedir permisos para iOS al abrir el shaker (user gesture)
     iniciarDetectorMovimiento();
 }
 
@@ -358,6 +482,7 @@ function cerrarShaker() {
 function renderizarEsencias() {
     const grid = document.getElementById('essences-grid');
     grid.innerHTML = '';
+    
     ESENCIAS.forEach(esencia => {
         const btn = document.createElement('div');
         btn.className = 'essence-btn';
@@ -369,12 +494,17 @@ function renderizarEsencias() {
 
 function toggleEsencia(esencia, btnElement) {
     const index = shakerState.seleccionados.indexOf(esencia.nombre);
+    
     if (index > -1) {
         shakerState.seleccionados.splice(index, 1);
         btnElement.classList.remove('selected');
-    } else if (shakerState.seleccionados.length < 3) {
-        shakerState.seleccionados.push(esencia.nombre);
-        btnElement.classList.add('selected');
+    } else {
+        if (shakerState.seleccionados.length < 3) {
+            shakerState.seleccionados.push(esencia.nombre);
+            btnElement.classList.add('selected');
+        } else {
+            showToast("Máximo 3 ingredientes", "warning");
+        }
     }
     actualizarEstadoShaker();
 }
@@ -384,47 +514,101 @@ function actualizarEstadoShaker() {
     const visual = document.getElementById('shaker-img');
     const status = document.getElementById('shaker-status');
     const btn = document.getElementById('btn-mix-manual');
+    const icon = visual.querySelector('.material-icons');
+
     if (count === 0) {
         status.textContent = "Añade ingredientes...";
-        if(btn) btn.disabled = true;
+        visual.classList.remove('ready');
+        icon.style.color = "#ccc";
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
     } else {
-        status.textContent = "¡Agita o pulsa el botón!";
-        if(btn) btn.disabled = false;
-        visual.classList.add('ready');
+        status.textContent = `${count}/3 Ingredientes`;
+        icon.style.color = "white";
+        
+        if (count >= 1) { 
+            visual.classList.add('ready');
+            status.textContent = "¡Agita tu móvil o pulsa el botón!";
+            status.style.color = "var(--gold)";
+            btn.disabled = false;
+            btn.style.opacity = "1";
+        }
     }
 }
 
-// --- DETECTOR MOVIMIENTO ---
+// --- DETECTOR DE AGITACIÓN (SHAKE) ---
 function iniciarDetectorMovimiento() {
+    // FIX: Soporte para iOS 13+ que requiere permiso explícito
     if (typeof DeviceMotionEvent.requestPermission === 'function') {
-        DeviceMotionEvent.requestPermission().then(state => { if (state === 'granted') activarSensores(); });
-    } else { activarSensores(); }
+        DeviceMotionEvent.requestPermission()
+            .then(permissionState => {
+                if (permissionState === 'granted') {
+                    activarSensores();
+                } else {
+                    showToast("Permiso de acelerómetro denegado.", "error");
+                }
+            })
+            .catch(console.error);
+    } else {
+        // Dispositivos no-iOS o versiones antiguas
+        activarSensores();
+    }
 }
 
 function activarSensores() {
     if (window.DeviceMotionEvent) {
+        // FIX: Umbral aumentado para evitar falsos positivos
         const umbral = 25; 
         let lastX = 0, lastY = 0, lastZ = 0;
+
         const handleMotion = (event) => {
-            if (shakerState.isProcessing || shakerState.seleccionados.length === 0) return;
+            if (shakerState.isProcessing) return; 
+            if (shakerState.seleccionados.length === 0) return;
+
             const acc = event.accelerationIncludingGravity;
             if (!acc) return;
-            if (Math.abs(acc.x - lastX) + Math.abs(acc.y - lastY) > umbral) {
+
+            const deltaX = Math.abs(acc.x - lastX);
+            const deltaY = Math.abs(acc.y - lastY);
+            const deltaZ = Math.abs(acc.z - lastZ);
+
+            if (deltaX + deltaY + deltaZ > umbral) {
                 shakerState.shakeCount++;
                 document.getElementById('shaker-img').classList.add('shaking');
-                if (shakerState.shakeCount > 8) { procesarMezcla(); shakerState.shakeCount = 0; }
-                setTimeout(() => document.getElementById('shaker-img').classList.remove('shaking'), 300);
+                
+                // Necesita agitarse un poco más consistentemente
+                if (shakerState.shakeCount > 8) {
+                    procesarMezcla();
+                    shakerState.shakeCount = 0; 
+                }
+                
+                clearTimeout(shakerState.shakeTimer);
+                shakerState.shakeTimer = setTimeout(() => {
+                    document.getElementById('shaker-img').classList.remove('shaking');
+                }, 300);
             }
-            lastX = acc.x; lastY = acc.y; lastZ = acc.z;
+
+            lastX = acc.x;
+            lastY = acc.y;
+            lastZ = acc.z;
         };
+        
         window.addEventListener('devicemotion', handleMotion, true);
         watchID = handleMotion;
     }
 }
 
-function detenerDetectorMovimiento() { if (watchID) window.removeEventListener('devicemotion', watchID, true); }
+function detenerDetectorMovimiento() {
+    if (watchID) {
+        window.removeEventListener('devicemotion', watchID, true);
+        watchID = null;
+    }
+}
 
-// --- PROCESAR MIXER IA (CORREGIDO) ---
+// --- LLAMADA A LA IA ---
+// js/script.js - Reemplaza tu función procesarMezcla actual con esta:
+
+// 1. Reemplaza procesarMezcla para incluir el Shuffle
 async function procesarMezcla() {
     if (shakerState.isProcessing || todosLosProductos.length === 0) return;
     shakerState.isProcessing = true;
@@ -434,13 +618,16 @@ async function procesarMezcla() {
     if(btn) btn.disabled = true;
     if(visual) visual.classList.add('shaking');
 
-    const menuRandom = [...todosLosProductos].sort(() => Math.random() - 0.5).map(p => p.nombre).join(', ');
+    const menuRandom = [...todosLosProductos]
+        .sort(() => Math.random() - 0.5)
+        .map(p => p.nombre)
+        .join(', ');
 
     try {
         const response = await fetch(URL_IA_BACKEND, {
             method: 'POST',
             body: JSON.stringify({
-                tipo: "coctel", // <--- CORRECCIÓN: Para que el servidor reconozca la petición
+                tipo: "coctel", // <--- CORRECCIÓN: Ahora el backend sí reconocerá la petición
                 sabor: shakerState.seleccionados.join(', '), 
                 menu: menuRandom 
             })
@@ -449,29 +636,40 @@ async function procesarMezcla() {
         const data = await response.json();
         if (data.recomendacion) {
             mostrarResultadoShaker(data.recomendacion);
-        } else { throw new Error("IA sin respuesta"); }
+        } else if (data.error) {
+            showToast(data.error, "error");
+            throw new Error(data.error);
+        }
+
     } catch (error) {
-        showToast("La IA sugiere algo especial, ¡mira la carta!", "info");
+        console.error(error);
+        showToast("Error al conectar con la IA", "error");
         shakerState.isProcessing = false;
         if(visual) visual.classList.remove('shaking');
         if(btn) btn.disabled = false;
     }
 }
 
+// 2. Reemplaza mostrarResultadoShaker con lógica de búsqueda flexible
 function mostrarResultadoShaker(nombreRecibido) {
     const nombreIA = nombreRecibido.toLowerCase().trim();
+
+    // Búsqueda inteligente: intentamos encontrar el nombre de la IA dentro de nuestra BD
     const producto = todosLosProductos.find(p => {
-        const n = p.nombre.toLowerCase();
-        return n === nombreIA || n.includes(nombreIA) || nombreIA.includes(n);
+        const nombreBD = p.nombre.toLowerCase();
+        return nombreBD === nombreIA || nombreBD.includes(nombreIA) || nombreIA.includes(nombreBD);
     });
 
     cerrarShaker();
+
     if (producto) {
         abrirDetalle(producto.id);
         showToast(`✨ Recomendación: ${producto.nombre}`);
     } else {
-        showToast("¡Explora nuestras opciones destacadas!", "info");
+        // En lugar de fallback al Mojito, avisamos que no hay match exacto
+        showToast("La IA sugiere algo especial, ¡mira nuestra carta!", "info");
     }
+    
     shakerState.isProcessing = false;
     const visual = document.getElementById('shaker-img');
     if(visual) visual.classList.remove('shaking');
