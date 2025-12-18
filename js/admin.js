@@ -147,35 +147,68 @@ function buscarInventario(e) {
 }
 
 // --- 4. GENERAR CURIOSIDAD (Simulado/IA) ---
+// --- 4. GENERAR CURIOSIDAD CON IA (GEMINI 2.0 FLASH-LITE) ---
 async function generarCuriosidad() {
-    const nombre = document.getElementById('nombre').value;
-    const campo = document.getElementById('curiosidad');
+    // Referencias al DOM (basadas en tu admin.html)
+    const nombreInput = document.getElementById('nombre');
+    const campoResultado = document.getElementById('curiosidad');
     const loader = document.getElementById('loader-ia');
     const btn = document.getElementById('btn-ia');
 
+    const nombre = nombreInput.value;
+
     if (!nombre) { 
-        alert("Escribe el nombre del producto primero."); 
+        alert("⚠️ Por favor, escribe primero el nombre del producto."); 
+        nombreInput.focus();
         return; 
     }
 
-    btn.disabled = true; 
-    loader.style.display = "inline-block"; 
-    campo.value = "Generando dato curioso...";
+    // ========== PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT ==========
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwfGlwmuKVSy630EnyWR4gJ0k-5hPVIwWg_bXS07m0v79KahgZ8J3Eyvi_DQu1-MbOg/exec";
+    // ============================================================
 
-    await new Promise(resolve => setTimeout(resolve, 800)); 
+    // 1. Activar estado de "Cargando"
+    if(btn) {
+        btn.disabled = true; 
+        btn.textContent = "✨ Creando...";
+        btn.style.opacity = "0.7";
+    }
+    if(loader) loader.style.display = "inline-block"; 
+    campoResultado.value = "Consultando a la IA...";
 
-    const curiosidades = [
-        `El '${nombre}' es perfecto para compartir en una noche especial.`,
-        `Nuestra versión del '${nombre}' incluye un ingrediente secreto de la casa.`,
-        `Recomendamos acompañar el '${nombre}' con una bebida cítrica.`,
-        `Este plato es uno de los más solicitados por nuestros clientes habituales.`
-    ];
+    try {
+        // 2. Petición al Proxy de Google
+        // Usamos POST. 'text/plain' evita el preflight CORS que a veces bloquea Google.
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ producto: nombre }),
+            headers: { "Content-Type": "text/plain" } 
+        });
 
-    const indice = Math.floor(Math.random() * curiosidades.length);
-    campo.value = curiosidades[indice];
+        const data = await response.json();
 
-    loader.style.display = "none"; 
-    btn.disabled = false;
+        // 3. Procesar respuesta
+        if (data.curiosidad) {
+            campoResultado.value = data.curiosidad;
+        } else if (data.error) {
+            console.error("Error remoto:", data.error);
+            campoResultado.value = "Error: " + data.error;
+        } else {
+            campoResultado.value = "La IA no generó respuesta.";
+        }
+
+    } catch (err) {
+        console.error("Error de conexión:", err);
+        campoResultado.value = "Error de conexión. Verifica tu internet.";
+    } finally {
+        // 4. Restaurar botones
+        if(loader) loader.style.display = "none"; 
+        if(btn) {
+            btn.disabled = false;
+            btn.textContent = "Generar";
+            btn.style.opacity = "1";
+        }
+    }
 }
 
 // --- 5. EDICIÓN DE PRODUCTOS ---
