@@ -64,21 +64,45 @@ function cerrarWelcome() {
     modal.classList.remove('active');
     setTimeout(() => modal.style.display = 'none', 400);
 }
+// Función auxiliar para estandarizar números (Cuba / Internacional)
+// Función auxiliar para limpiar teléfonos (PON ESTO FUERA DE LA FUNCIÓN registrarBienvenida)
+function limpiarTelefono(input) {
+    if (!input) return "";
+    
+    // 1. Eliminar todo lo que NO sea número
+    let limpio = input.replace(/\D/g, '');
+
+    // 2. Regla especial para Cuba (si viene como 53 + 8 dígitos = 10 en total)
+    if (limpio.length === 10 && limpio.startsWith('53')) {
+        limpio = limpio.substring(2);
+    }
+
+    return limpio;
+}
 
 async function registrarBienvenida() {
-    const nombre = document.getElementById('welcome-nombre').value;
-    const telefono = document.getElementById('welcome-phone').value;
+    const inputNombre = document.getElementById('welcome-nombre');
+    const inputPhone = document.getElementById('welcome-phone');
     const btn = document.querySelector('#modal-welcome button');
 
-    if (!nombre || !telefono) {
-        showToast("Por favor completa los datos para brindarte mejor servicio ");
+    // 2. Obtener valores y Limpiar
+    const nombre = inputNombre.value ? inputNombre.value.trim() : '';
+    
+    const telefonoRaw = inputPhone.value; 
+    const telefono = limpiarTelefono(telefonoRaw); // Usamos nuestra función mágica
+
+    // 3. Validación Correcta
+    // Si no hay nombre, O no hay teléfono, O el teléfono tiene MENOS de 8 dígitos...
+    if (!nombre || !telefono || telefono.length < 8) {
+        showToast("Por favor ingresa un nombre y un teléfono válido (8 dígitos).");
         return;
     }
 
-    btn.textContent = "Ingresando..."; btn.disabled = true;
+    btn.textContent = "Ingresando..."; 
+    btn.disabled = true;
 
     try {
-        // 1. Buscar si ya existe el cliente por teléfono
+        // 4. Buscar si ya existe el cliente
         let { data: cliente, error } = await supabaseClient
             .from('clientes')
             .select('id')
@@ -87,7 +111,7 @@ async function registrarBienvenida() {
 
         let clienteId;
 
-        // 2. Si no existe, lo creamos
+        // 5. Si no existe, lo creamos
         if (!cliente) {
             const { data: nuevo, error: errCrear } = await supabaseClient
                 .from('clientes')
@@ -99,10 +123,9 @@ async function registrarBienvenida() {
             clienteId = nuevo.id;
         } else {
             clienteId = cliente.id;
-            // Opcional: Podríamos actualizar el nombre si cambió
         }
 
-        // 3. Registramos la visita
+        // 6. Registramos la visita
         await supabaseClient.from('visitas').insert([{
             cliente_id: clienteId,
             motivo: 'Ingreso Menú'
@@ -110,20 +133,26 @@ async function registrarBienvenida() {
 
         sessionStorage.setItem('visita_registrada', 'true');
 
-        // 4. Guardamos en el celular para no volver a pedirlo
+        // 7. Guardamos en el celular (LocalStorage)
         localStorage.setItem('cliente_id', clienteId);
         localStorage.setItem('cliente_nombre', nombre);
-
         localStorage.setItem('ultima_visita_ts', Date.now().toString());
         
-        // 5. Cerrar y saludar
+        // 8. Cerrar modal y notificar éxito
         cerrarWelcome();
         showToast(`¡Bienvenido, ${nombre}!`, "success");
 
     } catch (err) {
         console.error("Error registro:", err);
-        alert("Ocurrió un error, pero puedes pasar.");
+        // Si falla (ej: error de red), dejamos pasar al usuario igual para no bloquearlo
+        alert("Ocurrió un error de conexión, pero puedes ver el menú.");
         cerrarWelcome();
+    } finally {
+        // Restaurar botón por si acaso el modal no se cerró
+        if(btn) {
+            btn.textContent = "INGRESAR AL BAR";
+            btn.disabled = false;
+        }
     }
 }
 let searchTimeout;
