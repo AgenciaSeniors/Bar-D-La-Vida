@@ -1,8 +1,9 @@
-// admin.js CORREGIDO Y SEGURO
+// js/admin.js - Panel de Administración (Corregido y Seguro)
+
 let inventarioGlobal = []; 
 let searchTimeout; 
 
-// [SEGURIDAD] Función para sanitizar HTML (local scope)
+// FUNCIÓN DE SEGURIDAD (Sanitización)
 function escapeHTML(str) {
     if (!str) return '';
     return str.toString().replace(/[&<>'"]/g, tag => ({
@@ -10,30 +11,22 @@ function escapeHTML(str) {
     }[tag]));
 }
 
-// 1. VERIFICACIÓN DE SEGURIDAD
+// 1. VERIFICACIÓN AUTH
 async function checkAuth() {
-    if (typeof supabaseClient === 'undefined') { 
-        console.error("Supabase no está definido."); 
-        return; 
-    }
+    if (typeof supabaseClient === 'undefined') return;
     const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) {
-        window.location.href = "login.html";
-    } else {
-        cargarAdmin();
-    }
+    if (!session) window.location.href = "login.html";
+    else cargarAdmin();
 }
 
 async function cargarAdmin() {
-    // RLS en Supabase rechazará esto si no hay sesión válida
     const { data, error } = await supabaseClient
         .from('productos')
         .select('*')
-        .order('id', { ascending: false }); // Quitamos .eq('activo', true) para que admin vea todo
+        .order('id', { ascending: false });
 
     if (error) {
-        console.error("Error cargando productos:", error);
-        alert("Sesión expirada o sin permisos. Recarga la página.");
+        console.error("Error productos:", error);
         return;
     }
     
@@ -46,45 +39,40 @@ async function cerrarSesion() {
     window.location.href = "login.html";
 }
 
-// --- 2. SISTEMA DE PESTAÑAS ---
-function cambiarVista(vistaNombre) {
+// 2. TABS
+function cambiarVista(vista) {
     document.querySelectorAll('.vista-seccion').forEach(el => {
         el.classList.remove('active');
-        el.style.display = 'none'; // Forzamos ocultar
+        el.style.display = 'none';
     });
-    
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
 
-    const vistaDestino = document.getElementById(`vista-${vistaNombre}`);
-    if (vistaDestino) {
-        vistaDestino.style.display = 'block';
-        // Timeout pequeño para permitir transición CSS si existe
-        setTimeout(() => vistaDestino.classList.add('active'), 10);
+    const target = document.getElementById(`vista-${vista}`);
+    if (target) {
+        target.style.display = 'block';
+        setTimeout(() => target.classList.add('active'), 10);
     }
 
-    const botones = document.querySelectorAll('.tab-btn');
-    if(vistaNombre === 'inventario') botones[0]?.classList.add('active');
-    if(vistaNombre === 'opiniones') botones[1]?.classList.add('active');
-    if(vistaNombre === 'visitas') botones[2]?.classList.add('active');
+    const map = { 'inventario': 0, 'opiniones': 1, 'visitas': 2 };
+    const btns = document.querySelectorAll('.tab-btn');
+    if(btns[map[vista]]) btns[map[vista]].classList.add('active');
 
-    if (vistaNombre === 'visitas' && typeof cargarVisitas === 'function') cargarVisitas();
-    if (vistaNombre === 'opiniones' && typeof cargarOpiniones === 'function') cargarOpiniones(); 
+    if (vista === 'visitas' && typeof cargarMetricasVisitas === 'function') cargarMetricasVisitas();
+    if (vista === 'opiniones' && typeof cargarOpiniones === 'function') cargarOpiniones(); 
 }
 
-// --- 3. RENDERIZADO DE INVENTARIO SEGURO ---
+// 3. RENDER INVENTARIO (SEGURO)
 function renderizarInventario(lista) {
-    const listaContainer = document.getElementById('lista-admin');
-    if (!listaContainer) return;
+    const container = document.getElementById('lista-admin');
+    if (!container) return;
     
-    listaContainer.innerHTML = '';
-
     if (!lista || lista.length === 0) {
-        listaContainer.innerHTML = '<p style="text-align:center; padding:20px; color:#888;">No hay productos.</p>';
+        container.innerHTML = '<p style="text-align:center; padding:20px; color:#888;">No hay productos.</p>';
         return;
     }
 
     const html = lista.map(item => {
-        // Sanitización
+        // Sanitizamos TODO lo que viene de la BD
         const nombreSafe = escapeHTML(item.nombre);
         const precioSafe = escapeHTML(item.precio);
         
@@ -92,121 +80,65 @@ function renderizarInventario(lista) {
         const statusText = esAgotado ? 'AGOTADO' : 'DISPONIBLE';
         const statusClass = esAgotado ? 'status-bad' : 'status-ok';
         const iconState = esAgotado ? 'toggle_off' : 'toggle_on';
-        const colorStateBtn = esAgotado ? '#666' : 'var(--green-success)';
-        const favColor = item.destacado ? 'var(--gold)' : '#444';
+        const colorState = esAgotado ? '#666' : 'var(--green-success)';
+        const colorStar = item.destacado ? 'var(--gold)' : '#444';
         const img = item.imagen_url || 'https://via.placeholder.com/60';
-
-        // Opacidad si está eliminado lógicamente (activo=false)
-        const opacityStyle = item.activo ? '' : 'opacity: 0.5; filter: grayscale(1);';
-        const deletedBadge = !item.activo ? '<span style="color:red; font-size:0.7em; margin-left:5px;">(ELIMINADO)</span>' : '';
+        const opacity = item.activo ? '' : 'opacity:0.5; filter:grayscale(1);';
+        const deletedLabel = !item.activo ? '<small style="color:red">(ELIMINADO)</small>' : '';
 
         return `
-            <div class="inventory-item" style="${opacityStyle}">
-                <img src="${img}" class="item-thumb" alt="Imagen">
-                
+            <div class="inventory-item" style="${opacity}">
+                <img src="${img}" class="item-thumb" alt="img">
                 <div class="item-meta">
-                    <span class="item-title">
-                        ${nombreSafe} ${item.destacado ? '🌟' : ''} ${deletedBadge}
-                    </span>
+                    <span class="item-title">${nombreSafe} ${item.destacado ? '🌟' : ''} ${deletedLabel}</span>
                     <span class="item-price">$${precioSafe}</span>
                     <span class="item-status ${statusClass}">${statusText}</span>
                 </div>
-
                 <div class="action-btn-group">
-                    <button class="icon-btn" onclick="prepararEdicion(${item.id})" title="Editar">
-                        <span class="material-icons">edit</span>
-                    </button>
-
-                    <button class="icon-btn" style="color:${favColor}" onclick="toggleDestacado(${item.id}, ${item.destacado})" title="Destacar">
-                        <span class="material-icons">star</span>
-                    </button>
-
-                    <button class="icon-btn" style="color:${colorStateBtn}" onclick="toggleEstado(${item.id}, '${item.estado}')" title="Disponibilidad">
-                        <span class="material-icons">${iconState}</span>
-                    </button>
-
-                    ${item.activo ? `
-                    <button class="icon-btn btn-del" onclick="eliminarProducto(${item.id})" title="Eliminar">
-                        <span class="material-icons">delete</span>
-                    </button>` : `
-                    <button class="icon-btn" onclick="restaurarProducto(${item.id})" title="Restaurar" style="color:var(--green-success)">
-                        <span class="material-icons">restore_from_trash</span>
-                    </button>`}
+                    <button class="icon-btn" onclick="prepararEdicion(${item.id})"><span class="material-icons">edit</span></button>
+                    <button class="icon-btn" style="color:${colorStar}" onclick="toggleDestacado(${item.id}, ${item.destacado})"><span class="material-icons">star</span></button>
+                    <button class="icon-btn" style="color:${colorState}" onclick="toggleEstado(${item.id}, '${item.estado}')"><span class="material-icons">${iconState}</span></button>
+                    ${item.activo ? 
+                        `<button class="icon-btn btn-del" onclick="eliminarProducto(${item.id})"><span class="material-icons">delete</span></button>` :
+                        `<button class="icon-btn" style="color:green" onclick="restaurarProducto(${item.id})"><span class="material-icons">restore_from_trash</span></button>`
+                    }
                 </div>
             </div>
         `;
     }).join('');
 
-    listaContainer.innerHTML = html;
+    container.innerHTML = html;
 }
 
 function buscarInventario(e) {
     clearTimeout(searchTimeout);
     const term = e.target.value.toLowerCase();
-
     searchTimeout = setTimeout(() => {
-        const listaFiltrada = inventarioGlobal.filter(p => 
-            p.nombre.toLowerCase().includes(term) || 
-            (p.descripcion && p.descripcion.toLowerCase().includes(term)) ||
-            (p.categoria && p.categoria.toLowerCase().includes(term))
+        const filtrada = inventarioGlobal.filter(p => 
+            (p.nombre || '').toLowerCase().includes(term) || 
+            (p.descripcion || '').toLowerCase().includes(term) ||
+            (p.categoria || '').toLowerCase().includes(term)
         );
-        renderizarInventario(listaFiltrada);
+        renderizarInventario(filtrada);
     }, 300);
 }
 
-// --- 4. GENERAR CURIOSIDAD (Mantenido igual) ---
-async function generarCuriosidad() {
-    const nombreInput = document.getElementById('nombre');
-    const campoResultado = document.getElementById('curiosidad');
-    const loader = document.getElementById('loader-ia');
-    const btn = document.getElementById('btn-ia');
-    const nombre = nombreInput.value;
-
-    if (!nombre) { alert("⚠️ Escribe el nombre del producto."); nombreInput.focus(); return; }
-
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwfGlwmuKVSy630EnyWR4gJ0k-5hPVIwWg_bXS07m0v79KahgZ8J3Eyvi_DQu1-MbOg/exec";
-
-    if(btn) { btn.disabled = true; btn.textContent = "✨ ..."; btn.style.opacity = "0.7"; }
-    if(loader) loader.style.display = "inline-block"; 
-    campoResultado.value = "Consultando a la IA...";
-
-    try {
-        const response = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify({ producto: nombre }),
-            headers: { "Content-Type": "text/plain" } 
-        });
-        const data = await response.json();
-        if (data.curiosidad) campoResultado.value = data.curiosidad;
-        else campoResultado.value = "La IA no respondió.";
-    } catch (err) {
-        campoResultado.value = "Error de conexión.";
-    } finally {
-        if(loader) loader.style.display = "none"; 
-        if(btn) { btn.disabled = false; btn.textContent = "Generar"; btn.style.opacity = "1"; }
-    }
-}
-
-// --- 5. EDICIÓN ---
+// 4. EDICIÓN / CREACIÓN
 function prepararEdicion(id) {
-    const producto = inventarioGlobal.find(p => p.id === id);
-    if (!producto) return;
+    const prod = inventarioGlobal.find(p => p.id === id);
+    if (!prod) return;
 
-    document.getElementById('edit-id').value = producto.id;
-    document.getElementById('nombre').value = producto.nombre;
-    document.getElementById('precio').value = producto.precio;
-    document.getElementById('categoria').value = producto.categoria;
-    document.getElementById('descripcion').value = producto.descripcion || '';
-    document.getElementById('curiosidad').value = producto.curiosidad || '';
-    document.getElementById('destacado').checked = producto.destacado;
+    document.getElementById('edit-id').value = prod.id;
+    document.getElementById('nombre').value = prod.nombre;
+    document.getElementById('precio').value = prod.precio;
+    document.getElementById('categoria').value = prod.categoria;
+    document.getElementById('descripcion').value = prod.descripcion || '';
+    document.getElementById('curiosidad').value = prod.curiosidad || '';
+    document.getElementById('destacado').checked = prod.destacado;
 
-    const btnSubmit = document.getElementById('btn-submit');
-    if(btnSubmit) btnSubmit.textContent = "ACTUALIZAR PRODUCTO";
+    document.getElementById('btn-submit').textContent = "ACTUALIZAR PRODUCTO";
+    document.getElementById('btn-cancelar').style.display = "block";
     
-    const btnCancel = document.getElementById('btn-cancelar');
-    if(btnCancel) btnCancel.style.display = "block";
-    
-    // Cambiar a vista inventario y subir
     cambiarVista('inventario');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -214,58 +146,44 @@ function prepararEdicion(id) {
 function cancelarEdicion() {
     document.getElementById('form-producto').reset();
     document.getElementById('edit-id').value = ""; 
-    const btnSubmit = document.getElementById('btn-submit');
-    if(btnSubmit) btnSubmit.textContent = "GUARDAR PRODUCTO";
-    const btnCancel = document.getElementById('btn-cancelar');
-    if(btnCancel) btnCancel.style.display = "none";
+    document.getElementById('btn-submit').textContent = "GUARDAR PRODUCTO";
+    document.getElementById('btn-cancelar').style.display = "none";
 }
 
-// --- 6. GUARDAR (INSERT/UPDATE) ---
+// 5. SUBMIT FORMULARIO
 const form = document.getElementById('form-producto');
 if(form) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
         const btn = document.getElementById('btn-submit');
-        const textoOriginal = btn.textContent;
+        const txtOriginal = btn.textContent;
         btn.textContent = "Guardando..."; btn.disabled = true;
 
         try {
-            const idEdicion = document.getElementById('edit-id').value;
-            const nombre = document.getElementById('nombre').value;
-            const precio = document.getElementById('precio').value;
-            const categoria = document.getElementById('categoria').value;
-            const descripcion = document.getElementById('descripcion').value;
-            const curiosidad = document.getElementById('curiosidad').value;
-            const destacado = document.getElementById('destacado').checked;
+            const id = document.getElementById('edit-id').value;
+            const datos = {
+                nombre: document.getElementById('nombre').value,
+                precio: document.getElementById('precio').value,
+                categoria: document.getElementById('categoria').value,
+                descripcion: document.getElementById('descripcion').value,
+                curiosidad: document.getElementById('curiosidad').value,
+                destacado: document.getElementById('destacado').checked
+            };
+
+            // Imagen
             const fileInput = document.getElementById('imagen-file');
-
-            let urlImagen = null;
-
             if (fileInput.files.length > 0) {
-                const archivo = fileInput.files[0];
-                const extension = archivo.name.split('.').pop();
-                const nombreArchivo = `prod_${Date.now()}.${extension}`;
-                
-                // Nota: Requiere política de Storage en Supabase
-                const { error: upErr } = await supabaseClient.storage
-                    .from('imagenes')
-                    .upload(nombreArchivo, archivo);
-                
+                const file = fileInput.files[0];
+                const fileName = `prod_${Date.now()}.${file.name.split('.').pop()}`;
+                const { error: upErr } = await supabaseClient.storage.from('imagenes').upload(fileName, file);
                 if (upErr) throw upErr;
-
-                const { data: urlData } = supabaseClient.storage
-                    .from('imagenes')
-                    .getPublicUrl(nombreArchivo);
-                urlImagen = urlData.publicUrl;
+                const { data } = supabaseClient.storage.from('imagenes').getPublicUrl(fileName);
+                datos.imagen_url = data.publicUrl;
             }
 
-            const datos = { nombre, precio, categoria, descripcion, curiosidad, destacado };
-            if (urlImagen) datos.imagen_url = urlImagen;
-
             let errorDb;
-            if (idEdicion) {
-                const { error } = await supabaseClient.from('productos').update(datos).eq('id', idEdicion);
+            if (id) {
+                const { error } = await supabaseClient.from('productos').update(datos).eq('id', id);
                 errorDb = error;
             } else {
                 datos.estado = 'disponible';
@@ -275,41 +193,61 @@ if(form) {
             }
 
             if (errorDb) throw errorDb;
-            alert(idEdicion ? "¡Actualizado!" : "¡Creado!");
+            alert(id ? "Actualizado" : "Creado");
             cancelarEdicion();
             cargarAdmin();
 
-        } catch (error) {
-            alert("Error: " + error.message);
+        } catch (err) {
+            alert("Error: " + err.message);
         } finally {
-            btn.textContent = textoOriginal; btn.disabled = false;
+            btn.textContent = txtOriginal; btn.disabled = false;
         }
     });
 }
 
-// --- 7. ACCIONES RÁPIDAS ---
-async function toggleDestacado(id, valorActual) {
-    await supabaseClient.from('productos').update({ destacado: !valorActual }).eq('id', id);
+// 6. TOGGLES
+async function toggleDestacado(id, val) {
+    await supabaseClient.from('productos').update({ destacado: !val }).eq('id', id);
     cargarAdmin();
 }
-
-async function toggleEstado(id, estadoActual) {
-    const nuevoEstado = estadoActual === 'disponible' ? 'agotado' : 'disponible';
-    await supabaseClient.from('productos').update({ estado: nuevoEstado }).eq('id', id);
+async function toggleEstado(id, val) {
+    const nuevo = val === 'disponible' ? 'agotado' : 'disponible';
+    await supabaseClient.from('productos').update({ estado: nuevo }).eq('id', id);
     cargarAdmin();
 }
-
 async function eliminarProducto(id) {
-    if(confirm("¿Estás seguro de eliminar este producto?")) {
-        // Borrado lógico
+    if(confirm("¿Eliminar?")) {
         await supabaseClient.from('productos').update({ activo: false }).eq('id', id);
         cargarAdmin();
     }
 }
-
 async function restaurarProducto(id) {
     await supabaseClient.from('productos').update({ activo: true }).eq('id', id);
     cargarAdmin();
+}
+
+// IA CURIOSIDAD (Mantenido igual)
+async function generarCuriosidad() {
+    const nombre = document.getElementById('nombre').value;
+    const out = document.getElementById('curiosidad');
+    const btn = document.getElementById('btn-ia');
+    const loader = document.getElementById('loader-ia');
+
+    if(!nombre) { alert("Pon un nombre primero"); return; }
+    
+    const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwfGlwmuKVSy630EnyWR4gJ0k-5hPVIwWg_bXS07m0v79KahgZ8J3Eyvi_DQu1-MbOg/exec";
+
+    btn.disabled = true; loader.style.display = "inline"; out.value = "Pensando...";
+
+    try {
+        const res = await fetch(URL_SCRIPT, { method:'POST', body: JSON.stringify({producto:nombre})});
+        const json = await res.json();
+        out.value = json.curiosidad || "Sin respuesta";
+    } catch(e) {
+        out.value = "Error conexión IA";
+    } finally {
+        btn.disabled = false; loader.style.display = "none";
+    }
 }
 
 document.addEventListener('DOMContentLoaded', checkAuth);

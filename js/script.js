@@ -1,29 +1,123 @@
-// js/script.js (Actualizado con Rate Limiting en reviews)
+// js/script.js - Lógica Cliente (Corregido)
 
 let todosLosProductos = [];
 let productoActual = null;
 let puntuacion = 0;
 let searchTimeout;
 
-// 1. CARGAR MENÚ
 document.addEventListener('DOMContentLoaded', () => {
-    checkWelcome(); // Verifica si ya ingresó para no mostrar el modal siempre
+    checkWelcome(); // Lógica de visitas mejorada
     cargarMenu();
     updateConnectionStatus();
 });
 
-// Lógica de Bienvenida (Conservada y Limpia)
-function checkWelcome() {
-    // Si ya tiene ID de cliente, no mostramos el welcome
-    if (localStorage.getItem('cliente_id')) {
-        document.getElementById('modal-welcome').style.display = 'none';
+// --- LÓGICA DE VISITAS Y BIENVENIDA ---
+async function checkWelcome() {
+    const clienteId = localStorage.getItem('cliente_id');
+    const modal = document.getElementById('modal-welcome');
+
+    if (clienteId) {
+        // Usuario ya registrado: Ocultamos modal
+        if (modal) modal.style.display = 'none';
+
+        // LÓGICA DE VISITA RECURRENTE (SILENCIOSA)
+        const ultimaVisita = localStorage.getItem('ultima_visita_ts');
+        const ahora = Date.now();
+        const HORAS_12 = 12 * 60 * 60 * 1000; // Cooldown de 12 horas
+
+        if (!ultimaVisita || (ahora - parseInt(ultimaVisita)) > HORAS_12) {
+            console.log("Registrando visita recurrente...");
+            // Registramos visita sin molestar al usuario
+            const { error } = await supabaseClient.from('visitas').insert([{
+                cliente_id: clienteId,
+                motivo: 'Regreso al Menú'
+            }]);
+
+            if (!error) {
+                localStorage.setItem('ultima_visita_ts', ahora.toString());
+            }
+        }
+    } else {
+        // Usuario nuevo: Mostrar modal
+        if (modal) {
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('active'), 10);
+        }
     }
 }
 
+function limpiarTelefono(input) {
+    if (!input) return "";
+    let limpio = input.replace(/\D/g, '');
+    if (limpio.length === 10 && limpio.startsWith('53')) limpio = limpio.substring(2);
+    return limpio;
+}
+
+async function registrarBienvenida() {
+    const inputNombre = document.getElementById('welcome-nombre');
+    const inputPhone = document.getElementById('welcome-phone');
+    const btn = document.querySelector('#modal-welcome button');
+
+    const nombre = inputNombre.value ? inputNombre.value.trim() : '';
+    const telefono = limpiarTelefono(inputPhone.value);
+
+    if (!nombre || !telefono || telefono.length < 8) {
+        showToast("Nombre y teléfono (8 dígitos) requeridos.", "warning");
+        return;
+    }
+
+    if(btn) { btn.textContent = "Entrando..."; btn.disabled = true; }
+
+    try {
+        // Buscar o crear cliente
+        let { data: cliente } = await supabaseClient
+            .from('clientes')
+            .select('id')
+            .eq('telefono', telefono)
+            .single();
+
+        let clienteId = cliente ? cliente.id : null;
+
+        if (!clienteId) {
+            const { data: nuevo } = await supabaseClient
+                .from('clientes')
+                .insert([{ nombre, telefono }])
+                .select()
+                .single();
+            clienteId = nuevo.id;
+        }
+
+        // Registrar primera visita
+        await supabaseClient.from('visitas').insert([{
+            cliente_id: clienteId,
+            motivo: 'Ingreso Inicial'
+        }]);
+
+        // Guardar sesión local
+        localStorage.setItem('cliente_id', clienteId);
+        localStorage.setItem('cliente_nombre', nombre);
+        localStorage.setItem('ultima_visita_ts', Date.now().toString());
+
+        // Cerrar modal
+        const modal = document.getElementById('modal-welcome');
+        modal.classList.remove('active');
+        setTimeout(() => modal.style.display = 'none', 400);
+        showToast(`¡Bienvenido, ${nombre}!`, "success");
+
+    } catch (err) {
+        console.error("Error registro:", err);
+        // En caso de error (ej. offline), permitimos pasar
+        document.getElementById('modal-welcome').style.display = 'none';
+    } finally {
+        if(btn) { btn.textContent = "INGRESAR"; btn.disabled = false; }
+    }
+}
+
+// --- MENÚ Y PRODUCTOS ---
 async function cargarMenu() {
     const grid = document.getElementById('menu-grid');
     
-    // Cache First Strategy
+    // 1. Cache First
     const menuCache = localStorage.getItem('menu_cache');
     if (menuCache) {
         todosLosProductos = JSON.parse(menuCache);
@@ -32,8 +126,9 @@ async function cargarMenu() {
         if(grid) grid.innerHTML = '<p style="text-align:center; color:#888; padding:40px;">Cargando carta...</p>';
     }
 
+    // 2. Network Update
     try {
-        if (typeof supabaseClient === 'undefined') throw new Error("Supabase off");
+        if (typeof supabaseClient === 'undefined') throw new Error("Supabase no definido");
 
         let { data: productos, error } = await supabaseClient
             .from('productos')
@@ -53,13 +148,12 @@ async function cargarMenu() {
             return prod;
         });
 
-        // Guardar caché y renderizar
         localStorage.setItem('menu_cache', JSON.stringify(productosProcesados));
         todosLosProductos = productosProcesados;
         renderizarMenu(todosLosProductos);
 
     } catch (err) {
-        console.warn("Modo Offline o Error:", err);
+        console.warn("Offline o error:", err);
         if(!menuCache && grid) grid.innerHTML = '<div style="text-align:center; padding:30px;">📡 Sin conexión. Intenta recargar.</div>';
     }
 }
@@ -77,10 +171,11 @@ function renderizarMenu(lista) {
     const html = lista.map(item => {
         const esAgotado = item.estado === 'agotado';
         let badgeHTML = '';
+        
         if (esAgotado) badgeHTML = `<span class="badge-agotado" style="color:var(--neon-red); border:1px solid var(--neon-red);">AGOTADO</span>`;
         else if (item.destacado) badgeHTML = `<span class="badge-destacado">🔥 HOT</span>`;
 
-        const img = item.imagen_url || 'https://via.placeholder.com/300x300?text=No+Image';
+        const img = item.imagen_url || 'https://via.placeholder.com/300x300?text=Sin+Imagen';
         const rating = item.ratingPromedio ? `★ ${item.ratingPromedio}` : '';
         const accionClick = esAgotado ? '' : `onclick="abrirDetalle(${item.id})"`;
         const claseAgotado = esAgotado ? 'agotado' : '';
@@ -103,7 +198,32 @@ function renderizarMenu(lista) {
     contenedor.innerHTML = html;
 }
 
-// --- DETALLE Y MODALES ---
+// --- BÚSQUEDA Y FILTROS ---
+const searchInput = document.getElementById('search-input');
+if(searchInput) {
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        const term = e.target.value.toLowerCase();
+        searchTimeout = setTimeout(() => {
+            const lista = todosLosProductos.filter(p => 
+                (p.nombre || '').toLowerCase().includes(term) || 
+                (p.descripcion || '').toLowerCase().includes(term) // Corrección Crash por null
+            );
+            renderizarMenu(lista);
+        }, 300);
+    });
+}
+
+function filtrar(cat, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+    if(searchInput) searchInput.value = '';
+    
+    const lista = cat === 'todos' ? todosLosProductos : todosLosProductos.filter(p => p.categoria === cat);
+    renderizarMenu(lista);
+}
+
+// --- DETALLES Y OPINIONES ---
 function abrirDetalle(id) {
     productoActual = todosLosProductos.find(p => p.id === id);
     if (!productoActual) return;
@@ -114,9 +234,7 @@ function abrirDetalle(id) {
     setText('det-titulo', productoActual.nombre);
     setText('det-desc', productoActual.descripcion);
     setText('det-precio', `$${productoActual.precio}`);
-    
-    const ratingBig = productoActual.ratingPromedio ? `★ ${productoActual.ratingPromedio}` : '★ --';
-    setText('det-rating-big', ratingBig);
+    setText('det-rating-big', productoActual.ratingPromedio ? `★ ${productoActual.ratingPromedio}` : '★ --');
 
     const box = document.getElementById('box-curiosidad');
     if (productoActual.curiosidad && productoActual.curiosidad.length > 5) {
@@ -139,13 +257,11 @@ function cerrarDetalle() {
 
 function abrirOpinionDesdeDetalle() {
     cerrarDetalle();
-    const modalOpinion = document.getElementById('modal-opinion');
-    
+    const modal = document.getElementById('modal-opinion');
     setTimeout(() => {
-        modalOpinion.style.display = 'flex';
-        setTimeout(() => modalOpinion.classList.add('active'), 10);
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('active'), 10);
         
-        // Auto-llenar nombre si existe
         const nombreGuardado = localStorage.getItem('cliente_nombre');
         const inputNombre = document.getElementById('cliente-nombre');
         if(nombreGuardado && inputNombre) inputNombre.value = nombreGuardado;
@@ -161,7 +277,7 @@ function cerrarModalOpiniones() {
     setTimeout(() => modal.style.display = 'none', 350);
 }
 
-// --- SISTEMA DE OPINIONES (RATE LIMITING) ---
+// Estrellas
 const starsContainer = document.getElementById('stars-container');
 if(starsContainer) {
     starsContainer.addEventListener('click', (e) => {
@@ -181,19 +297,16 @@ function actualizarEstrellas() {
 }
 
 async function enviarOpinion() {
-    if (puntuacion === 0) { showToast("¡Selecciona las estrellas!", "warning"); return; }
-    
-    // [SEGURIDAD] RATE LIMITING: Bloquear spam desde el mismo dispositivo
-    const LAST_REVIEW_KEY = 'last_review_ts';
-    const COOLDOWN_HOURS = 12;
-    const lastReview = localStorage.getItem(LAST_REVIEW_KEY);
+    if (puntuacion === 0) { showToast("¡Marca las estrellas!", "warning"); return; }
 
-    if (lastReview) {
-        const horasPasadas = (Date.now() - parseInt(lastReview)) / (1000 * 60 * 60);
-        if (horasPasadas < COOLDOWN_HOURS) {
-            showToast(`Espera ${Math.ceil(COOLDOWN_HOURS - horasPasadas)} horas para opinar de nuevo.`, "error");
-            return;
-        }
+    // Rate Limiting (Anti-Spam Local)
+    const LAST_OPINION = 'last_opinion_ts';
+    const lastTime = localStorage.getItem(LAST_OPINION);
+    const ahora = Date.now();
+    
+    if (lastTime && (ahora - parseInt(lastTime)) < 12 * 60 * 60 * 1000) {
+        showToast("Solo puedes opinar cada 12 horas.", "warning");
+        return;
     }
 
     const nombre = document.getElementById('cliente-nombre').value || "Anónimo";
@@ -205,18 +318,16 @@ async function enviarOpinion() {
     const { error } = await supabaseClient.from('opiniones').insert([{
         producto_id: productoActual.id,
         cliente_nombre: nombre,
-        comentario: comentario, // Se sanitizará al mostrar, aquí se guarda raw
+        comentario: comentario, 
         puntuacion: puntuacion
     }]);
 
     if (!error) {
-        showToast("¡Opinión recibida!", "success");
-        // Guardar timestamp para activar el cooldown
-        localStorage.setItem(LAST_REVIEW_KEY, Date.now().toString());
-        
+        localStorage.setItem(LAST_OPINION, ahora.toString());
+        showToast("¡Gracias por tu opinión!", "success");
         cerrarModalOpiniones();
         document.getElementById('cliente-comentario').value = "";
-        cargarMenu(); // Recargar para ver cambios en estrellas
+        cargarMenu();
     } else {
         showToast("Error: " + error.message, "error");
     }
@@ -225,129 +336,28 @@ async function enviarOpinion() {
 }
 
 // --- UTILIDADES ---
-function setText(id, text) {
-    const el = document.getElementById(id);
-    if(el) el.textContent = text;
-}
+function setText(id, val) { const el = document.getElementById(id); if(el) el.textContent = val; }
 
-function showToast(mensaje, tipo = 'success') {
+function showToast(msg, tipo = 'success') {
     const container = document.getElementById('toast-container');
     if(!container) return;
-
-    const toast = document.createElement('div');
-    toast.className = `toast ${tipo}`;
-    toast.innerHTML = `<span class="toast-msg">${mensaje}</span>`;
-
-    container.appendChild(toast);
-    setTimeout(() => {
-        toast.style.animation = 'fadeOut 0.4s forwards';
-        setTimeout(() => toast.remove(), 400); 
-    }, 3000);
+    const t = document.createElement('div');
+    t.className = `toast ${tipo}`;
+    t.innerHTML = `<span class="toast-msg">${msg}</span>`;
+    container.appendChild(t);
+    setTimeout(() => { t.style.animation = 'fadeOut 0.4s forwards'; setTimeout(() => t.remove(), 400); }, 3000);
 }
 
-// --- BIENVENIDA Y REGISTRO ---
-function limpiarTelefono(input) {
-    if (!input) return "";
-    let limpio = input.replace(/\D/g, '');
-    if (limpio.length === 10 && limpio.startsWith('53')) limpio = limpio.substring(2);
-    return limpio;
-}
-
-async function registrarBienvenida() {
-    const inputNombre = document.getElementById('welcome-nombre');
-    const inputPhone = document.getElementById('welcome-phone');
-    const btn = document.querySelector('#modal-welcome button');
-
-    const nombre = inputNombre.value ? inputNombre.value.trim() : '';
-    const telefono = limpiarTelefono(inputPhone.value);
-
-    if (!nombre || !telefono || telefono.length < 8) {
-        showToast("Nombre y teléfono (8 dígitos) requeridos.", "warning");
-        return;
-    }
-
-    btn.textContent = "Entrando..."; btn.disabled = true;
-
-    try {
-        // Verificar si existe cliente
-        let { data: cliente } = await supabaseClient
-            .from('clientes')
-            .select('id')
-            .eq('telefono', telefono)
-            .single();
-
-        let clienteId = cliente ? cliente.id : null;
-
-        if (!clienteId) {
-            const { data: nuevo } = await supabaseClient
-                .from('clientes')
-                .insert([{ nombre, telefono }])
-                .select()
-                .single();
-            clienteId = nuevo.id;
-        }
-
-        // Registrar visita
-        await supabaseClient.from('visitas').insert([{
-            cliente_id: clienteId,
-            motivo: 'Ingreso Menú'
-        }]);
-
-        localStorage.setItem('cliente_id', clienteId);
-        localStorage.setItem('cliente_nombre', nombre);
-        
-        document.getElementById('modal-welcome').classList.remove('active');
-        setTimeout(() => document.getElementById('modal-welcome').style.display = 'none', 400);
-        showToast(`¡Bienvenido, ${nombre}!`, "success");
-
-    } catch (err) {
-        console.error(err);
-        // Fallback offline
-        document.getElementById('modal-welcome').style.display = 'none';
-    } finally {
-        if(btn) { btn.textContent = "INGRESAR"; btn.disabled = false; }
-    }
-}
-
-// Búsqueda y Filtros
-const searchInput = document.getElementById('search-input');
-if(searchInput) {
-    searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        const term = e.target.value.toLowerCase();
-        searchTimeout = setTimeout(() => {
-            const lista = todosLosProductos.filter(p => 
-                p.nombre.toLowerCase().includes(term) || 
-                (p.descripcion && p.descripcion.toLowerCase().includes(term))
-            );
-            renderizarMenu(lista);
-        }, 300);
-    });
-}
-
-function filtrar(cat, btn) {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    if(btn) btn.classList.add('active');
-    if(searchInput) searchInput.value = '';
-    
-    const lista = cat === 'todos' ? todosLosProductos : todosLosProductos.filter(p => p.categoria === cat);
-    renderizarMenu(lista);
-}
-
-// Status de Conexión
 function updateConnectionStatus() {
-    const statusText = document.getElementById('connection-status');
-    const statusDot = document.getElementById('status-dot');
-    if (!statusText) return;
-
+    const el = document.getElementById('connection-status');
+    const dot = document.getElementById('status-dot');
+    if (!el) return;
     if (navigator.onLine) {
-        statusText.textContent = "Conectado";
-        statusText.style.color = "var(--green-success)";
-        if(statusDot) statusDot.style.backgroundColor = "var(--green-success)";
+        el.textContent = "Conectado"; el.style.color = "var(--green-success)";
+        if(dot) dot.style.backgroundColor = "var(--green-success)";
     } else {
-        statusText.textContent = "Offline";
-        statusText.style.color = "var(--neon-red)";
-        if(statusDot) statusDot.style.backgroundColor = "var(--neon-red)";
+        el.textContent = "Offline"; el.style.color = "var(--neon-red)";
+        if(dot) dot.style.backgroundColor = "var(--neon-red)";
     }
 }
 
