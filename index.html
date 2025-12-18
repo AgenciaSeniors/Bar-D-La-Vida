@@ -68,15 +68,25 @@
         <div id="menu-grid" class="menu-grid"></div>
     </main>
 
-    <footer style="text-align:center; padding: 30px; color: #333; font-size: 0.8rem;">
-    <p>D' La Vida Bar © 2025</p>
+    <footer style="text-align:center; padding: 30px 20px; color: #333; font-size: 0.8rem;">
+    <p style="margin-bottom: 8px;">D' La Vida Bar © 2025</p>
     
-    <div style="margin-top: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;">
+    <p style="font-size: 0.7rem; color: #555;">
+        Digital Experience by 
+        <a href="https://github.com/AgenciaSeniors/agencia" target="_blank" rel="noopener" 
+           style="color: var(--neon-cyan); text-decoration: none; font-weight: 600; transition: 0.3s;">
+           AGENCY SENIORS
+        </a>
+    </p>
+
+    <div style="margin-top: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;">
         <span id="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: #ccc;"></span>
         <span id="connection-status">Comprobando...</span>
     </div>
 
-    <a href="login.html" style="color: var(--neon-cyan); text-decoration:none; margin-top:10px; display:inline-block;">🔒 Staff</a>
+    <a href="login.html" style="color: #444; text-decoration:none; margin-top:20px; display:inline-block; font-size: 0.7rem; border: 1px solid #333; padding: 4px 10px; border-radius: 4px;">
+        🔒 Acceso Staff
+    </a>
 </footer>
 
     <div id="modal-detalle" class="modal-overlay" onclick="if(event.target == this) cerrarDetalle()">
