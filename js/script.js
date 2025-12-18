@@ -568,26 +568,28 @@ async function procesarMezcla() {
     }
 }
 
-function mostrarResultadoShaker(nombreProducto) {
-    // Buscar el producto completo en el array global
-    // Usamos 'includes' para ser tolerantes si la IA añade algo extra o falla una tilde
-    const producto = todosLosProductos.find(p => 
-        p.nombre.toLowerCase().includes(nombreProducto.toLowerCase()) || 
-        nombreProducto.toLowerCase().includes(p.nombre.toLowerCase())
-    );
+function mostrarResultadoShaker(nombreRecibido) {
+    // 1. Limpiamos el nombre recibido por si acaso
+    const nombreIA = nombreRecibido.toLowerCase().trim();
 
-    cerrarShaker(); // Cerramos el mixer
+    // 2. Buscador flexible
+    const producto = todosLosProductos.find(p => {
+        const nombreBD = p.nombre.toLowerCase();
+        // Verifica si el nombre de la IA está en la BD o viceversa
+        return nombreBD.includes(nombreIA) || nombreIA.includes(nombreBD);
+    });
+
+    cerrarShaker();
 
     if (producto) {
-        abrirDetalle(producto.id); // Abrimos el detalle del producto ganador
-        showToast("¡Aquí está tu mezcla perfecta! ✨");
+        abrirDetalle(producto.id);
+        showToast(`✨ Combinación perfecta: ${producto.nombre}`);
     } else {
-        // Fallback si la IA alucina un nombre que no existe
-        showToast("La mezcla fue tan rara que explotó... 💥 Intenta otra.", "error");
+        // En lugar de un error feo, si no lo encuentra, mostramos el primer destacado
+        const fallback = todosLosProductos.find(p => p.destacado) || todosLosProductos[0];
+        abrirDetalle(fallback.id);
+        showToast("¡Sorpresa! Prueba nuestra recomendación de la casa", "info");
     }
     
-    // Resetear botón por si vuelven a abrir
-    const btn = document.getElementById('btn-mix-manual');
-    btn.textContent = "¡MEZCLAR AHORA!";
     shakerState.isProcessing = false;
 }
