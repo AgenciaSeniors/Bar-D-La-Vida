@@ -3,59 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Night Bar | Experience</title>
-    <link rel="manifest" href="manifest.json">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;800&family=Playfair+Display:ital,wght@1,400;1,700&display=swap" rel="stylesheet">
+    <title>D' La Vida Bar | Neon Noir</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;800&family=Yellowtail&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/modal.css">
+    <link rel="manifest" href="manifest.json">
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
 </head>
 <body>
     <div id="modal-welcome" class="modal-overlay">
-        <div class="modal-card" style="text-align: center; padding: 40px 30px;">
-            <h2 class="modal-title-elegant" style="margin-bottom: 10px;">The Night Bar 🌙</h2>
-            <p style="color:#b0b0b0; font-size:0.95rem; margin-bottom: 25px;">
-                Bienvenido. Para mejorar tu experiencia y servicio en mesa, por favor identifícate:
+        <div class="modal-card" style="text-align: center; padding: 40px 30px; border: 1px solid var(--neon-cyan);">
+            <img src="img/logo.png" alt="Logo" style="width: 80px; margin-bottom: 10px;">
+            <h2 class="modal-title-elegant" style="font-size: 2.5rem;">D' La Vida Bar</h2>
+            <p style="color:#ddd; margin-bottom: 25px; font-size: 0.9rem; font-family: 'Montserrat', sans-serif;">
+                La noche cobra vida. Identifícate.
             </p>
-            <input type="text" id="welcome-nombre" placeholder="Tu Nombre" class="input-stylish" style="width:100%; margin-bottom:15px; text-align:center;">
-            <input type="tel" id="welcome-phone" placeholder="Tu WhatsApp / Teléfono" class="input-stylish" style="width:100%; margin-bottom:25px; text-align:center;">
-            <button class="btn-modal-action" onclick="registrarBienvenida()">INGRESAR AL BAR</button>
-            <p onclick="cerrarWelcome()" style="color:#666; font-size:0.8rem; margin-top:20px; cursor:pointer; text-decoration:underline;">Prefiero ver el menú anónimamente</p>
+            <input type="text" id="welcome-nombre" placeholder="Tu Nombre" class="input-stylish" style="margin-bottom:15px; text-align:center;">
+            <input type="tel" id="welcome-phone" placeholder="Teléfono" class="input-stylish" style="margin-bottom:25px; text-align:center;">
+            <button class="btn-modal-action" onclick="registrarBienvenida()">ENTRAR</button>
+            <p onclick="cerrarWelcome()" style="color:#666; font-size:0.75rem; margin-top:20px; cursor:pointer; text-decoration:underline;">Entrar como anónimo</p>
         </div>
     </div>
 
     <div id="toast-container"></div>
 
     <header class="hero-optimizado">
-        <img src="https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=800&q=70" class="hero-bg" alt="Ambiente">
+        <img src="https://images.unsplash.com/photo-1572116469696-31de0f17cc34?auto=format&fit=crop&w=600&q=60" class="hero-bg" alt="Ambiente" loading="lazy">
         <div class="overlay">
             <div class="logo-area">
-                <h1>THE NIGHT BAR</h1>
-                <p>Coctelería de Autor & Gastronomía</p>
+                <div class="logo-container">
+                    <img src="img/logo.png" alt="Logotipo D' La Vida" class="main-logo">
+                </div>
+                <h1 class="brand-name">D' La Vida Bar</h1>
+                <p class="tagline">NEON NOIR EXPERIENCE</p>
             </div>
         </div>
     </header>
 
     <div class="search-wrapper">
         <div class="search-box">
-            <span class="search-icon">✦</span>
-            <input type="text" id="search-input" placeholder="Buscar cocteles, platos...">
+            <span class="search-icon" style="color: var(--neon-cyan);">🔍</span>
+            <input type="text" id="search-input" placeholder="Buscar cóctel, plato...">
         </div>
     </div>
 
     <div class="filters-container">
         <nav class="filters">
-            <button class="filter-btn active" onclick="filtrar('todos', this)">⭐ Todo</button>
-            <button class="filter-btn" onclick="filtrar('cocteles', this)">🍸 Cocteles</button>
-            <button class="filter-btn" onclick="filtrar('cervezas', this)">🍺 Cervezas</button>
-            <button class="filter-btn" onclick="filtrar('licores', this)">🍷 Vinos</button>
-            <button class="filter-btn" onclick="filtrar('bebidas_sin', this)">🥤 Jugos</button>
-            <button class="filter-btn" onclick="filtrar('italiana', this)">🍕 Pizzas</button>
-            <button class="filter-btn" onclick="filtrar('fuertes', this)">🍖 Fuertes</button>
-            <button class="filter-btn" onclick="filtrar('tapas', this)">🍟 Picar</button>
+            <button class="filter-btn active" onclick="filtrar('todos', this)">Todos</button>
+            <button class="filter-btn" onclick="filtrar('cocteles', this)">Cócteles</button>
+            <button class="filter-btn" onclick="filtrar('cervezas', this)">Cervezas</button>
+            <button class="filter-btn" onclick="filtrar('tapas', this)">Picar</button>
+            <button class="filter-btn" onclick="filtrar('fuertes', this)">Platos</button>
         </nav>
     </div>
 
@@ -64,44 +68,49 @@
         <div id="menu-grid" class="menu-grid"></div>
     </main>
 
-    <footer>
-        <p>The Night Bar © 2025</p>
-        <a href="login.html" class="admin-link">🔒 Acceso Gerencial</a>
+    <footer style="text-align:center; padding: 30px; color: #333; font-size: 0.8rem;">
+        <p>D' La Vida Bar © 2025</p>
+        <a href="login.html" style="color: var(--neon-cyan); text-decoration:none; margin-top:10px; display:inline-block;">🔒 Staff</a>
     </footer>
 
     <div id="modal-detalle" class="modal-overlay" onclick="if(event.target == this) cerrarDetalle()">
         <div class="modal-card">
             <div class="btn-close-modal" onclick="cerrarDetalle()">✕</div>
             <div class="modal-image-wrapper">
-                <img id="det-img" src="" alt="Producto">
+                <img id="det-img" src="" alt="Producto" loading="lazy">
             </div>
             <div class="modal-body-content">
-                <h2 id="det-titulo" class="modal-title-elegant">Nombre Producto</h2>
+                <h2 id="det-titulo" class="modal-title-elegant">Nombre</h2>
                 <span id="det-precio" class="modal-price-tag">$0.00</span>
-                <p id="det-desc" class="modal-description">Descripción...</p>
+                <p id="det-desc" class="modal-description">...</p>
+                
                 <div id="box-curiosidad" class="ia-badge" style="display:none;">
-                    <span class="ia-title">✨ Curiosidad del Chef</span>
+                    <span class="ia-title">⚡ Dato Curioso</span>
                     <p id="det-curiosidad" class="ia-text">...</p>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; border-top:1px solid #222; padding-top:15px;">
                     <span style="color:#666; font-size:0.8rem;">Valoración:</span>
-                    <span id="det-rating-big" style="color:#FFD700; font-size:1.1rem; font-weight:bold;">★ 5.0</span>
+                    <span id="det-rating-big" style="color:var(--neon-green); font-size:1.2rem; font-weight:bold;">★ 5.0</span>
                 </div>
-                <button class="btn-modal-action" onclick="abrirOpinionDesdeDetalle()">Dejar Opinión</button>
+                <button class="btn-modal-action" style="margin-top:15px;" onclick="abrirOpinionDesdeDetalle()">CALIFICAR</button>
             </div>
         </div>
     </div>
 
-    <div id="modal-opinion" class="modal" onclick="if(event.target == this) cerrarModalOpiniones()">
-        <div class="modal-content" style="padding: 30px; text-align: center;">
+    <div id="modal-opinion" class="modal-overlay" onclick="if(event.target == this) cerrarModalOpiniones()">
+        <div class="modal-card" style="padding: 30px;">
             <span class="close-btn-float" style="top:10px; right:10px;" onclick="cerrarModalOpiniones()">×</span>
-            <h3 style="color:var(--gold); margin-bottom:20px; font-family:'Playfair Display', serif;">Calificar Experiencia</h3>
-            <div class="stars" id="stars-container" style="font-size:3rem; color:#444; cursor:pointer; margin-bottom:20px;">
+            <h3 class="modal-title-elegant" style="text-align:center; margin-bottom:20px; font-size:2rem; color:var(--neon-magenta);">Tu Opinión</h3>
+            
+            <div class="stars" id="stars-container" style="font-size:3rem; color:#333; cursor:pointer; margin-bottom:25px; text-align:center;">
                 <span data-val="1">★</span><span data-val="2">★</span><span data-val="3">★</span><span data-val="4">★</span><span data-val="5">★</span>
             </div>
-            <input type="text" id="cliente-nombre" placeholder="Tu nombre (Opcional)" class="input-stylish" style="width:100%; margin-bottom:10px;">
-            <textarea id="cliente-comentario" rows="3" placeholder="¿Qué te pareció?" class="input-stylish" style="width:100%; margin-bottom:20px;"></textarea>
-            <button class="btn-big-action" id="btn-enviar-opinion" onclick="enviarOpinion()">ENVIAR</button>
+            
+            <input type="text" id="cliente-nombre" placeholder="Tu Nombre" class="input-stylish" style="margin-bottom:15px;">
+            <textarea id="cliente-comentario" rows="3" placeholder="Comentario..." class="input-stylish" style="margin-bottom:20px;"></textarea>
+            
+            <button class="btn-big-action" onclick="enviarOpinion()">ENVIAR</button>
         </div>
     </div>
 
