@@ -1,21 +1,28 @@
-/* style.css - Identidad Visual: Neon Noir (Logo Cover) */
+/* style.css - Identidad Visual: Neon Noir (D' La Vida Bar) */
 
+/* 1. IMPORTACIÓN DE FUENTES (Yellowtail para Títulos, Montserrat para Lectura) */
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;800&family=Yellowtail&display=swap');
 
 :root {
     /* --- PALETA NEON NOIR --- */
-    --bg-noir: #050505;       /* Fondo Base */
-    --bg-surface: #0f0f0f;    
+    --bg-noir: #050505;       /* Fondo Base: Negro Profundo */
+    --bg-surface: #0f0f0f;    /* Superficies: Casi negro */
     
-    --neon-red: #FF003C;      
-    --neon-green: #CCFF00;    
-    --neon-cyan: #00F0FF;     
-    --neon-magenta: #BD00FF;  
+    /* Colores Neón (Alta Saturación) */
+    --neon-red: #FF003C;      /* Rojo Vida (Botones, Ofertas) */
+    --neon-green: #CCFF00;    /* Verde Lima (Precios) */
+    --neon-cyan: #00F0FF;     /* Cian Eléctrico (Hielo, Detalles) */
+    --neon-magenta: #BD00FF;  /* Magenta (Títulos) */
     
-    --text-primary: #FFFFFF;
+    --text-primary: #FFFFFF;  /* Blanco Puro (Lectura) */
     
-    --font-neon: 'Yellowtail', cursive;     
-    --font-body: 'Montserrat', sans-serif;  
+    /* Tipografías */
+    --font-neon: 'Yellowtail', cursive;     /* Títulos Artísticos */
+    --font-body: 'Montserrat', sans-serif;  /* Textos Funcionales */
+    
+    /* Efectos */
+    --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+    --neon-shadow: 0 0 10px rgba(189, 0, 255, 0.3);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -28,51 +35,69 @@ body {
     overflow-x: hidden;
 }
 
-/* --- HERO SOLO LOGO --- */
+/* --- HERO & HEADER --- */
 .hero-optimizado { 
-    height: 40vh; /* Altura ideal para móviles */
+    height: 40vh; /* Altura ajustada para el logo */
     position: relative; 
     overflow: hidden; 
-    border-bottom: 2px solid var(--neon-cyan); 
-    background: #000; /* Fondo negro puro */
+    border-bottom: 2px solid var(--neon-cyan); /* Borde neón sutil */
+    background: #000; 
     box-shadow: 0 10px 40px -10px black;
 }
 
 .hero-bg { 
-    width: 100%; 
-    height: 100%; 
-    /* ESTO ES LA CLAVE: 'contain' asegura que se vea todo el logo sin cortes */
-    object-fit: contain; 
-    position: absolute; 
-    top: 0; left: 0; z-index: 0; 
-    opacity: 1; /* Totalmente visible, sin oscurecer */
-    padding: 30px; /* Margen interno para que "respire" y no toque los bordes */
-    
-    /* Pequeña animación flotante para darle vida */
-    animation: floatLogo 6s ease-in-out infinite;
-}
-
-@keyframes floatLogo { 
-    0% { transform: scale(1); } 
-    50% { transform: scale(1.05); filter: drop-shadow(0 0 15px rgba(255, 0, 60, 0.3)); } 
-    100% { transform: scale(1); } 
+    width: 100%; height: 100%; object-fit: cover; 
+    position: absolute; top: 0; left: 0; z-index: 0; 
+    opacity: 0.5; /* Oscurecido para resaltar el logo */
 }
 
 .overlay { 
-    /* Overlay muy sutil solo en la parte inferior para integrar el buscador */
     position: relative; z-index: 1; width: 100%; height: 100%; 
-    background: linear-gradient(to top, var(--bg-noir) 5%, transparent 40%); 
-    pointer-events: none;
+    background: linear-gradient(to top, var(--bg-noir) 10%, rgba(5,5,5,0.4)); 
+    display: flex; flex-direction: column; justify-content: flex-end; align-items: center; 
+    padding: 30px; text-align: center;
+}
+
+/* --- LOGO E IDENTIDAD --- */
+.logo-container {
+    margin-bottom: 5px;
+}
+.main-logo {
+    width: 120px; /* Tamaño controlado del logo.png */
+    height: auto;
+    filter: drop-shadow(0 0 10px rgba(255, 0, 60, 0.4)); /* Resplandor rojo detrás */
+    animation: float 6s ease-in-out infinite;
+}
+@keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-5px); } 100% { transform: translateY(0px); } }
+
+.brand-name {
+    font-family: var(--font-neon); 
+    font-size: 2.5rem;
+    color: var(--text-primary);
+    margin: 0;
+    text-shadow: 0 0 10px var(--neon-magenta), 0 0 20px var(--neon-red); /* Doble neón */
+    line-height: 1.1;
+}
+
+.tagline {
+    font-family: var(--font-body);
+    font-size: 0.7rem;
+    letter-spacing: 4px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--neon-cyan);
+    margin-top: 5px;
+    opacity: 0.9;
 }
 
 /* --- BUSCADOR --- */
 .search-wrapper { padding: 0 20px; margin-top: -25px; position: relative; z-index: 20; }
 .search-box { 
     background: rgba(20, 20, 20, 0.95); 
+    backdrop-filter: blur(10px); 
     border: 1px solid var(--neon-magenta); 
     border-radius: 50px; display: flex; align-items: center; padding: 5px 20px; 
-    box-shadow: 0 0 15px rgba(189, 0, 255, 0.2);
-    backdrop-filter: blur(10px);
+    box-shadow: 0 0 20px rgba(189, 0, 255, 0.15);
 }
 #search-input { width: 100%; padding: 12px 0; background: transparent; border: none; color: white; font-family: var(--font-body); font-size: 1rem; outline: none; }
 .search-icon { color: var(--neon-cyan); margin-right: 10px; font-size: 1.2rem; }
@@ -81,8 +106,8 @@ body {
 .filters-container { 
     position: sticky; top: 0; z-index: 90; 
     background: rgba(5, 5, 5, 0.95); 
+    backdrop-filter: blur(12px); 
     padding: 15px 0; border-bottom: 1px solid #222; 
-    backdrop-filter: blur(12px);
 }
 .filters { display: flex; gap: 10px; padding: 0 20px; overflow-x: auto; scrollbar-width: none; }
 .filter-btn { 
@@ -97,7 +122,7 @@ body {
     color: var(--neon-cyan); 
     border-color: var(--neon-cyan); 
     font-weight: 700; 
-    box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
 }
 
 /* --- GRID MENÚ --- */
@@ -105,11 +130,11 @@ body {
 .section-title { 
     font-family: var(--font-neon); 
     color: var(--neon-magenta); 
-    font-size: 2rem; margin-bottom: 20px; 
-    text-shadow: 0 0 5px rgba(189, 0, 255, 0.4);
+    font-size: 2.2rem; margin-bottom: 25px; 
+    text-shadow: 0 0 8px rgba(189, 0, 255, 0.4);
 }
 
-.menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
+.menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; }
 
 /* TARJETA DE PRODUCTO */
 .card { 
@@ -117,7 +142,7 @@ body {
     border-radius: 16px; overflow: hidden; 
     border: 1px solid #222; 
     position: relative; cursor: pointer; 
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
     transition: transform 0.2s, box-shadow 0.2s;
 }
 .card:active { transform: scale(0.98); }
@@ -125,17 +150,19 @@ body {
 .img-box { height: 160px; background: #111; position: relative; }
 .img-box img { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; }
 
-.info { padding: 12px; }
+.info { padding: 15px; }
 .card h3 { 
     font-family: var(--font-neon); 
-    font-size: 1.4rem; color: var(--text-primary); 
-    margin-bottom: 5px; font-weight: 400;
+    font-size: 1.5rem; 
+    color: var(--text-primary); 
+    margin-bottom: 5px; 
+    font-weight: 400;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .short-desc {
     font-family: var(--font-body);
-    font-size: 0.75rem; color: #999;
-    margin-bottom: 10px;
+    font-size: 0.75rem; color: #aaa;
+    margin-bottom: 12px; line-height: 1.4;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
