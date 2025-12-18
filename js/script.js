@@ -1,4 +1,4 @@
-// js/script.js - Lógica Cliente (Corregido)
+// js/script.js - Lógica Cliente (Refactorizado)
 
 let todosLosProductos = [];
 let productoActual = null;
@@ -14,27 +14,29 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- LÓGICA DE VISITAS Y BIENVENIDA ---
 async function checkWelcome() {
     const clienteId = localStorage.getItem('cliente_id');
+    const modoAnonimo = localStorage.getItem('modo_anonimo');
     const modal = document.getElementById('modal-welcome');
 
-    if (clienteId) {
-        // Usuario ya registrado: Ocultamos modal
+    // Si ya es cliente o eligió ser anónimo
+    if (clienteId || modoAnonimo === 'true') {
         if (modal) modal.style.display = 'none';
 
-        // LÓGICA DE VISITA RECURRENTE (SILENCIOSA)
-        const ultimaVisita = localStorage.getItem('ultima_visita_ts');
-        const ahora = Date.now();
-        const HORAS_12 = 12 * 60 * 60 * 1000; // Cooldown de 12 horas
+        // LÓGICA DE VISITA RECURRENTE (Solo para registrados)
+        if (clienteId) {
+            const ultimaVisita = localStorage.getItem('ultima_visita_ts');
+            const ahora = Date.now();
+            const HORAS_12 = 12 * 60 * 60 * 1000;
 
-        if (!ultimaVisita || (ahora - parseInt(ultimaVisita)) > HORAS_12) {
-            console.log("Registrando visita recurrente...");
-            // Registramos visita sin molestar al usuario
-            const { error } = await supabaseClient.from('visitas').insert([{
-                cliente_id: clienteId,
-                motivo: 'Regreso al Menú'
-            }]);
+            if (!ultimaVisita || (ahora - parseInt(ultimaVisita)) > HORAS_12) {
+                console.log("Registrando visita recurrente...");
+                const { error } = await supabaseClient.from('visitas').insert([{
+                    cliente_id: clienteId,
+                    motivo: 'Regreso al Menú'
+                }]);
 
-            if (!error) {
-                localStorage.setItem('ultima_visita_ts', ahora.toString());
+                if (!error) {
+                    localStorage.setItem('ultima_visita_ts', ahora.toString());
+                }
             }
         }
     } else {
@@ -46,10 +48,31 @@ async function checkWelcome() {
     }
 }
 
+// FIX: Función solicitada para el botón anónimo
+function cerrarWelcome() {
+    activarModoAnonimo();
+}
+
+function activarModoAnonimo() {
+    localStorage.setItem('modo_anonimo', 'true');
+    const modal = document.getElementById('modal-welcome');
+    if (modal) {
+        modal.classList.remove('active');
+        setTimeout(() => modal.style.display = 'none', 400);
+    }
+    showToast("Modo Explorador Anónimo", "info");
+}
+
+// FIX: Validación telefónica corregida
 function limpiarTelefono(input) {
     if (!input) return "";
-    let limpio = input.replace(/\D/g, '');
-    if (limpio.length === 10 && limpio.startsWith('53')) limpio = limpio.substring(2);
+    let limpio = input.replace(/\D/g, ''); // Eliminar todo lo que no sea dígito
+    
+    // Si tiene 10 dígitos y empieza por 53 (formato internacional sin +), quitamos el 53
+    if (limpio.length === 10 && limpio.startsWith('53')) {
+        limpio = limpio.substring(2);
+    }
+    // NOTA: Si el usuario escribe 8 dígitos (ej: 55555555), lo dejamos pasar.
     return limpio;
 }
 
@@ -61,8 +84,9 @@ async function registrarBienvenida() {
     const nombre = inputNombre.value ? inputNombre.value.trim() : '';
     const telefono = limpiarTelefono(inputPhone.value);
 
+    // Validación básica: requerimos al menos 8 dígitos para Cuba
     if (!nombre || !telefono || telefono.length < 8) {
-        showToast("Nombre y teléfono (8 dígitos) requeridos.", "warning");
+        showToast("Nombre y teléfono válido (min 8 dígitos) requeridos.", "warning");
         return;
     }
 
@@ -96,6 +120,7 @@ async function registrarBienvenida() {
         // Guardar sesión local
         localStorage.setItem('cliente_id', clienteId);
         localStorage.setItem('cliente_nombre', nombre);
+        localStorage.removeItem('modo_anonimo'); // Ya no es anónimo
         localStorage.setItem('ultima_visita_ts', Date.now().toString());
 
         // Cerrar modal
@@ -106,24 +131,29 @@ async function registrarBienvenida() {
 
     } catch (err) {
         console.error("Error registro:", err);
-        // En caso de error (ej. offline), permitimos pasar
-        document.getElementById('modal-welcome').style.display = 'none';
+        // Fallback: permitir entrada local en caso de error de red crítico
+        cerrarWelcome(); 
     } finally {
         if(btn) { btn.textContent = "INGRESAR"; btn.disabled = false; }
     }
 }
 
 // --- MENÚ Y PRODUCTOS ---
+// FIX: Mejor manejo de estados (Loading, Error, Vacío)
 async function cargarMenu() {
     const grid = document.getElementById('menu-grid');
     
-    // 1. Cache First
+    // 1. Mostrar estado de carga si no hay caché inmediata
     const menuCache = localStorage.getItem('menu_cache');
     if (menuCache) {
         todosLosProductos = JSON.parse(menuCache);
         renderizarMenu(todosLosProductos);
     } else {
-        if(grid) grid.innerHTML = '<p style="text-align:center; color:#888; padding:40px;">Cargando carta...</p>';
+        if(grid) grid.innerHTML = `
+            <div style="grid-column:1/-1; text-align:center; padding:40px;">
+                <span class="material-icons spin" style="font-size:2rem; color:var(--neon-cyan);">refresh</span>
+                <p style="color:#888; margin-top:10px;">Cargando carta...</p>
+            </div>`;
     }
 
     // 2. Network Update
@@ -138,6 +168,14 @@ async function cargarMenu() {
             .order('id', { ascending: false });
 
         if (error) throw error;
+
+        // Manejo explícito de carta vacía desde BD
+        if (!productos || productos.length === 0) {
+            todosLosProductos = [];
+            localStorage.removeItem('menu_cache');
+            renderizarMenu([]); // Renderizará el mensaje de "Carta Vacía"
+            return;
+        }
 
         // Calcular ratings
         const productosProcesados = productos.map(prod => {
@@ -154,7 +192,15 @@ async function cargarMenu() {
 
     } catch (err) {
         console.warn("Offline o error:", err);
-        if(!menuCache && grid) grid.innerHTML = '<div style="text-align:center; padding:30px;">📡 Sin conexión. Intenta recargar.</div>';
+        // Si no tenemos caché y falló la red
+        if(!menuCache && grid) {
+            grid.innerHTML = `
+                <div style="grid-column:1/-1; text-align:center; padding:30px;">
+                    <span class="material-icons" style="font-size:3rem; color:var(--neon-red);">wifi_off</span>
+                    <h4 style="margin:10px 0;">Error de Conexión</h4>
+                    <button class="btn-modal-action" onclick="cargarMenu()" style="width:auto; padding:0 20px;">REINTENTAR</button>
+                </div>`;
+        }
     }
 }
 
@@ -164,7 +210,7 @@ function renderizarMenu(lista) {
     contenedor.innerHTML = '';
 
     if (!lista || lista.length === 0) {
-        contenedor.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px;"><h4>Carta Vacía</h4></div>';
+        contenedor.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px;"><h4>Carta Vacía o Sin Resultados</h4></div>';
         return;
     }
 
@@ -175,7 +221,7 @@ function renderizarMenu(lista) {
         if (esAgotado) badgeHTML = `<span class="badge-agotado" style="color:var(--neon-red); border:1px solid var(--neon-red);">AGOTADO</span>`;
         else if (item.destacado) badgeHTML = `<span class="badge-destacado">🔥 HOT</span>`;
 
-        const img = item.imagen_url || 'https://via.placeholder.com/300x300?text=Sin+Imagen';
+        const img = item.imagen_url || 'img/logo.png'; // Fallback a logo local
         const rating = item.ratingPromedio ? `★ ${item.ratingPromedio}` : '';
         const accionClick = esAgotado ? '' : `onclick="abrirDetalle(${item.id})"`;
         const claseAgotado = esAgotado ? 'agotado' : '';
@@ -207,7 +253,7 @@ if(searchInput) {
         searchTimeout = setTimeout(() => {
             const lista = todosLosProductos.filter(p => 
                 (p.nombre || '').toLowerCase().includes(term) || 
-                (p.descripcion || '').toLowerCase().includes(term) // Corrección Crash por null
+                (p.descripcion || '').toLowerCase().includes(term)
             );
             renderizarMenu(lista);
         }, 300);
@@ -394,6 +440,8 @@ function abrirShaker() {
     shakerState.seleccionados = [];
     renderizarEsencias();
     actualizarEstadoShaker();
+    
+    // FIX: Intentar pedir permisos para iOS al abrir el shaker (user gesture)
     iniciarDetectorMovimiento();
 }
 
@@ -421,11 +469,9 @@ function toggleEsencia(esencia, btnElement) {
     const index = shakerState.seleccionados.indexOf(esencia.nombre);
     
     if (index > -1) {
-        // Deseleccionar
         shakerState.seleccionados.splice(index, 1);
         btnElement.classList.remove('selected');
     } else {
-        // Seleccionar (Máximo 3)
         if (shakerState.seleccionados.length < 3) {
             shakerState.seleccionados.push(esencia.nombre);
             btnElement.classList.add('selected');
@@ -453,7 +499,7 @@ function actualizarEstadoShaker() {
         status.textContent = `${count}/3 Ingredientes`;
         icon.style.color = "white";
         
-        if (count >= 1) { // Mínimo 1 para mezclar
+        if (count >= 1) { 
             visual.classList.add('ready');
             status.textContent = "¡Agita tu móvil o pulsa el botón!";
             status.style.color = "var(--gold)";
@@ -465,15 +511,31 @@ function actualizarEstadoShaker() {
 
 // --- DETECTOR DE AGITACIÓN (SHAKE) ---
 function iniciarDetectorMovimiento() {
+    // FIX: Soporte para iOS 13+ que requiere permiso explícito
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+        DeviceMotionEvent.requestPermission()
+            .then(permissionState => {
+                if (permissionState === 'granted') {
+                    activarSensores();
+                } else {
+                    showToast("Permiso de acelerómetro denegado.", "error");
+                }
+            })
+            .catch(console.error);
+    } else {
+        // Dispositivos no-iOS o versiones antiguas
+        activarSensores();
+    }
+}
+
+function activarSensores() {
     if (window.DeviceMotionEvent) {
-        // Umbral de sensibilidad
-        const umbral = 15; 
+        // FIX: Umbral aumentado para evitar falsos positivos
+        const umbral = 25; 
         let lastX = 0, lastY = 0, lastZ = 0;
 
         const handleMotion = (event) => {
-            // Si ya estamos procesando, ignorar
             if (shakerState.isProcessing) return; 
-            // Si no hay suficientes ingredientes, ignorar
             if (shakerState.seleccionados.length === 0) return;
 
             const acc = event.accelerationIncludingGravity;
@@ -487,13 +549,12 @@ function iniciarDetectorMovimiento() {
                 shakerState.shakeCount++;
                 document.getElementById('shaker-img').classList.add('shaking');
                 
-                // Necesita agitarse un poco, no solo un golpe accidental
-                if (shakerState.shakeCount > 5) {
+                // Necesita agitarse un poco más consistentemente
+                if (shakerState.shakeCount > 8) {
                     procesarMezcla();
-                    shakerState.shakeCount = 0; // Reset
+                    shakerState.shakeCount = 0; 
                 }
                 
-                // Quitar clase shaking después de un momento
                 clearTimeout(shakerState.shakeTimer);
                 shakerState.shakeTimer = setTimeout(() => {
                     document.getElementById('shaker-img').classList.remove('shaking');
@@ -506,7 +567,7 @@ function iniciarDetectorMovimiento() {
         };
         
         window.addEventListener('devicemotion', handleMotion, true);
-        watchID = handleMotion; // Guardar referencia para quitarlo luego
+        watchID = handleMotion;
     }
 }
 
@@ -521,7 +582,7 @@ function detenerDetectorMovimiento() {
 async function procesarMezcla() {
     if (shakerState.isProcessing) return;
     shakerState.isProcessing = true;
-    detenerDetectorMovimiento(); // Parar sensores
+    detenerDetectorMovimiento(); 
 
     // UI Feedback
     const btn = document.getElementById('btn-mix-manual');
@@ -530,25 +591,21 @@ async function procesarMezcla() {
     
     btn.textContent = "Mezclando sabores...";
     status.textContent = "🧠 La IA está probando la mezcla...";
-    visual.classList.add('shaking'); // Animación perpetua mientras carga
+    visual.classList.add('shaking'); 
 
     // Preparar datos para Google Script
-    // 1. Obtenemos nombres de productos de tu variable global todosLosProductos
     const menuSimple = todosLosProductos.map(p => p.nombre).join(', ');
-    
-    // 2. URL de tu Script
     const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwfGlwmuKVSy630EnyWR4gJ0k-5hPVIwWg_bXS07m0v79KahgZ8J3Eyvi_DQu1-MbOg/exec";
 
     try {
         const response = await fetch(URL_SCRIPT, {
             method: 'POST',
-            // Enviamos un JSON stringificado como pide tu script doPost(e)
             body: JSON.stringify({
-                tipo: "Cualquiera", // Genérico, la IA decidirá
-                sabor: shakerState.seleccionados.join(', '), // Ej: "Fresco, Dulce, Fiesta"
-                menu: menuSimple // Contexto vital para la IA
+                tipo: "Cualquiera", 
+                sabor: shakerState.seleccionados.join(', '), 
+                menu: menuSimple 
             }),
-            headers: { "Content-Type": "text/plain" } // Evita preflight CORS
+            headers: { "Content-Type": "text/plain" }
         });
 
         const data = await response.json();
@@ -565,17 +622,15 @@ async function procesarMezcla() {
         shakerState.isProcessing = false;
         visual.classList.remove('shaking');
         btn.textContent = "¡MEZCLAR AHORA!";
+        btn.disabled = false;
     }
 }
 
 function mostrarResultadoShaker(nombreRecibido) {
-    // 1. Limpiamos el nombre recibido por si acaso
     const nombreIA = nombreRecibido.toLowerCase().trim();
 
-    // 2. Buscador flexible
     const producto = todosLosProductos.find(p => {
         const nombreBD = p.nombre.toLowerCase();
-        // Verifica si el nombre de la IA está en la BD o viceversa
         return nombreBD.includes(nombreIA) || nombreIA.includes(nombreBD);
     });
 
@@ -585,9 +640,8 @@ function mostrarResultadoShaker(nombreRecibido) {
         abrirDetalle(producto.id);
         showToast(`✨ Combinación perfecta: ${producto.nombre}`);
     } else {
-        // En lugar de un error feo, si no lo encuentra, mostramos el primer destacado
         const fallback = todosLosProductos.find(p => p.destacado) || todosLosProductos[0];
-        abrirDetalle(fallback.id);
+        if (fallback) abrirDetalle(fallback.id);
         showToast("¡Sorpresa! Prueba nuestra recomendación de la casa", "info");
     }
     
