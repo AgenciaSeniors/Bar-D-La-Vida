@@ -270,12 +270,16 @@ function filtrar(cat, btn) {
 }
 
 // --- DETALLES Y OPINIONES ---
-function abrirDetalle(id) {
+// Definir la URL de tu Google Apps Script al inicio del archivo para fácil acceso
+const URL_IA_BACKEND = "https://script.google.com/macros/s/AKfycbwfGlwmuKVSy630EnyWR4gJ0k-5hPVIwWg_bXS07m0v79KahgZ8J3Eyvi_DQu1-MbOg/exec";
+
+// --- MEJORA EN DETALLES PARA GENERAR CURIOSIDAD IA ---
+async function abrirDetalle(id) {
     productoActual = todosLosProductos.find(p => p.id === id);
     if (!productoActual) return;
 
     const imgEl = document.getElementById('det-img');
-    if(imgEl) imgEl.src = productoActual.imagen_url || '';
+    if(imgEl) imgEl.src = productoActual.imagen_url || 'img/logo.png';
     
     setText('det-titulo', productoActual.nombre);
     setText('det-desc', productoActual.descripcion);
@@ -283,11 +287,34 @@ function abrirDetalle(id) {
     setText('det-rating-big', productoActual.ratingPromedio ? `★ ${productoActual.ratingPromedio}` : '★ --');
 
     const box = document.getElementById('box-curiosidad');
+    const textCuriosidad = document.getElementById('det-curiosidad');
+
+    // Si el producto ya tiene curiosidad en la BD, la mostramos
     if (productoActual.curiosidad && productoActual.curiosidad.length > 5) {
         if(box) box.style.display = "block";
         setText('det-curiosidad', productoActual.curiosidad);
     } else {
-        if(box) box.style.display = "none";
+        // Si no tiene, llamamos a la IA dinámicamente
+        if(box) {
+            box.style.display = "block";
+            textCuriosidad.innerHTML = "<i>Consultando al historiador...</i>";
+            
+            try {
+                const res = await fetch(URL_IA_BACKEND, {
+                    method: 'POST',
+                    body: JSON.stringify({ producto: productoActual.nombre })
+                });
+                const data = await res.json();
+                if(data.curiosidad) {
+                    textCuriosidad.textContent = data.curiosidad;
+                    productoActual.curiosidad = data.curiosidad; // Guardar temporalmente
+                } else {
+                    box.style.display = "none";
+                }
+            } catch (e) {
+                box.style.display = "none";
+            }
+        }
     }
     
     const modal = document.getElementById('modal-detalle');
@@ -586,24 +613,21 @@ async function procesarMezcla() {
     if (shakerState.isProcessing || todosLosProductos.length === 0) return;
     shakerState.isProcessing = true;
     
-    // UI Feedback
     const btn = document.getElementById('btn-mix-manual');
     const visual = document.getElementById('shaker-img');
     if(btn) btn.disabled = true;
     if(visual) visual.classList.add('shaking');
 
-    // ALEATORIZACIÓN DEL MENÚ (Crucial para romper el sesgo)
     const menuRandom = [...todosLosProductos]
         .sort(() => Math.random() - 0.5)
         .map(p => p.nombre)
         .join(', ');
 
-    const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwfGlwmuKVSy630EnyWR4gJ0k-5hPVIwWg_bXS07m0v79KahgZ8J3Eyvi_DQu1-MbOg/exec";
-
     try {
-        const response = await fetch(URL_SCRIPT, {
+        const response = await fetch(URL_IA_BACKEND, {
             method: 'POST',
             body: JSON.stringify({
+                tipo: "coctel", // <--- CORRECCIÓN: Ahora el backend sí reconocerá la petición
                 sabor: shakerState.seleccionados.join(', '), 
                 menu: menuRandom 
             })
@@ -612,10 +636,14 @@ async function procesarMezcla() {
         const data = await response.json();
         if (data.recomendacion) {
             mostrarResultadoShaker(data.recomendacion);
-        } else { throw new Error("IA sin respuesta"); }
+        } else if (data.error) {
+            showToast(data.error, "error");
+            throw new Error(data.error);
+        }
 
     } catch (error) {
         console.error(error);
+        showToast("Error al conectar con la IA", "error");
         shakerState.isProcessing = false;
         if(visual) visual.classList.remove('shaking');
         if(btn) btn.disabled = false;
