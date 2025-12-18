@@ -69,9 +69,15 @@
     </main>
 
     <footer style="text-align:center; padding: 30px; color: #333; font-size: 0.8rem;">
-        <p>D' La Vida Bar © 2025</p>
-        <a href="login.html" style="color: var(--neon-cyan); text-decoration:none; margin-top:10px; display:inline-block;">🔒 Staff</a>
-    </footer>
+    <p>D' La Vida Bar © 2025</p>
+    
+    <div style="margin-top: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <span id="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: #ccc;"></span>
+        <span id="connection-status">Comprobando...</span>
+    </div>
+
+    <a href="login.html" style="color: var(--neon-cyan); text-decoration:none; margin-top:10px; display:inline-block;">🔒 Staff</a>
+</footer>
 
     <div id="modal-detalle" class="modal-overlay" onclick="if(event.target == this) cerrarDetalle()">
         <div class="modal-card">

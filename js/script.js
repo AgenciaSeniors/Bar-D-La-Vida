@@ -6,57 +6,64 @@
 // --- LÓGICA DE VISITAS INTELIGENTE (1 Visita cada 12 horas) ---
 
 document.addEventListener('DOMContentLoaded', async () => {
-    cargarMenu(); // Carga visual inmediata
 
-    const clienteId = localStorage.getItem('cliente_id');
-    const ultimaVisita = localStorage.getItem('ultima_visita_ts'); // Timestamp de la última vez
-    const ahora = Date.now();
-    
-    // Configuración: ¿Cada cuánto tiempo cuenta como nueva visita?
-    // 12 horas = 1000 ms * 60 s * 60 min * 12 h
-    const TIEMPO_ESPERA = 1000 * 10; 
+    // js/script.js - Reemplaza la función cargarMenu existente
 
-    // CASO 1: CLIENTE NUEVO (No tiene ID)
-    if (!clienteId) {
-        setTimeout(() => {
-            const modal = document.getElementById('modal-welcome');
-            if(modal) {
-                modal.style.display = 'flex';
-                setTimeout(() => modal.classList.add('active'), 50);
-            }
-        }, 1500);
-    } 
-    // CASO 2: CLIENTE YA REGISTRADO
-    else {
-        // Verificamos si ya pasó el tiempo de espera para contar otra visita
-        const tiempoTranscurrido = ultimaVisita ? (ahora - parseInt(ultimaVisita)) : TIEMPO_ESPERA + 1;
+async function cargarMenu() {
+    const grid = document.getElementById('menu-grid');
+    if (!grid) return;
 
-        if (tiempoTranscurrido > TIEMPO_ESPERA) {
-            // ¡Es una nueva visita válida! (Ha pasado más de 12 horas o es la primera vez recurrente)
-            try {
-                await supabaseClient.from('visitas').insert([{
-                    cliente_id: clienteId,
-                    motivo: 'Visita Recurrente'
-                }]);
-                
-                // Actualizamos la marca de tiempo para que no vuelva a contar hoy
-                localStorage.setItem('ultima_visita_ts', ahora.toString());
-                console.log("✅ Visita recurrente registrada (Nueva sesión válida)");
+    // 1. ESTRATEGIA "CACHE-FIRST": Mostrar lo guardado INMEDIATAMENTE
+    const menuCache = localStorage.getItem('menu_cache');
+    if (menuCache) {
+        console.log("📂 Cargando menú desde caché local...");
+        todosLosProductos = JSON.parse(menuCache);
+        renderizarMenu(todosLosProductos);
+    } else {
+        // Solo mostrar loader si no hay nada en caché
+        grid.innerHTML = '<p style="text-align:center; color:#888; padding:40px;">Cargando carta...</p>';
+    }
 
-                // Saludo opcional
-                const nombre = localStorage.getItem('cliente_nombre');
-                if(nombre && typeof showToast === 'function') {
-                    setTimeout(() => showToast(`¡Qué bueno verte de nuevo, ${nombre}!`), 2000);
-                }
+    // 2. ACTUALIZAR EN SEGUNDO PLANO (Network)
+    try {
+        if (typeof supabaseClient === 'undefined') throw new Error("Supabase off");
 
-            } catch (err) {
-                console.error("Error registrando visita:", err);
-            }
+        let { data: productos, error } = await supabaseClient
+            .from('productos')
+            .select(`*, opiniones(puntuacion)`)
+            .eq('activo', true)
+            .order('destacado', { ascending: false })
+            .order('id', { ascending: false });
+
+        if (error) throw error;
+
+        // Calcular ratings
+        const productosProcesados = productos.map(prod => {
+            const opiniones = prod.opiniones || [];
+            const total = opiniones.length;
+            const suma = opiniones.reduce((acc, curr) => acc + curr.puntuacion, 0);
+            prod.ratingPromedio = total ? (suma / total).toFixed(1) : null;
+            return prod;
+        });
+
+        // 3. ACTUALIZAR CACHÉ Y VISTA (Solo si hubo cambios o es la primera vez)
+        // Guardamos en localStorage para la próxima
+        localStorage.setItem('menu_cache', JSON.stringify(productosProcesados));
+        
+        todosLosProductos = productosProcesados;
+        renderizarMenu(todosLosProductos); 
+        console.log("☁️ Menú actualizado desde Internet");
+
+    } catch (err) {
+        console.error("⚠️ Modo Offline: Usando versión en caché.", err);
+        // Si falló internet y no teníamos caché, mostramos error
+        if (!menuCache) {
+            grid.innerHTML = '<div style="text-align:center; padding:30px;">📡 Sin conexión y sin menú guardado.<br>Intenta recargar.</div>';
         } else {
-            // Si entra aquí, es porque abrió el menú hace poco. NO contamos nada.
-            console.log("ℹ️ Visita ignorada: El cliente ya fue contado hace menos de 12 horas.");
+            showToast("Modo Offline: Viendo menú guardado", "warning");
         }
     }
+}
 });
 
 function cerrarWelcome() {
@@ -446,3 +453,38 @@ if ('serviceWorker' in navigator) {
     .then(() => console.log('PWA registrada (Modo Cuba activado)'))
     .catch((err) => console.log('Error PWA:', err));
 }
+
+// Lógica de Estado de Conexión (Offline/Online)
+function updateConnectionStatus() {
+    const statusText = document.getElementById('connection-status');
+    const statusDot = document.getElementById('status-dot');
+    
+    if (!statusText) return;
+
+    if (navigator.onLine) {
+        statusText.textContent = "Conectado";
+        statusText.style.color = "var(--green-success)"; // Asegúrate de tener esta variable o usa #00e676
+        statusDot.style.backgroundColor = "#00e676";
+        statusDot.style.boxShadow = "0 0 8px #00e676";
+    } else {
+        statusText.textContent = "Modo Offline";
+        statusText.style.color = "var(--neon-red)";
+        statusDot.style.backgroundColor = "var(--neon-red)";
+        statusDot.style.boxShadow = "none";
+    }
+}
+
+// Escuchar cambios de red
+window.addEventListener('online', () => {
+    updateConnectionStatus();
+    showToast("¡Conexión restaurada!", "success");
+    cargarMenu(); // Reintentar cargar menú fresco
+});
+
+window.addEventListener('offline', () => {
+    updateConnectionStatus();
+    showToast("Sin conexión. Usando datos guardados.", "error");
+});
+
+// Ejecutar al inicio
+document.addEventListener('DOMContentLoaded', updateConnectionStatus);
