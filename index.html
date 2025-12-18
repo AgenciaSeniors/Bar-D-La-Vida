@@ -129,7 +129,35 @@
             <button class="btn-big-action" onclick="enviarOpinion()">ENVIAR</button>
         </div>
     </div>
+    <button class="fab-ia" onclick="abrirShaker()" style="background: linear-gradient(135deg, #ff0055, #ff5500); color:white;">
+    <span class="material-icons">local_bar</span>
+    <span class="fab-text">Mixer IA</span>
+</button>
 
+<div id="modal-shaker" class="modal-overlay">
+    <div class="modal-content shaker-card">
+        <button class="btn-close-modal" onclick="cerrarShaker()">
+            <span class="material-icons">close</span>
+        </button>
+
+        <h3 class="shaker-title">El Mixer Mágico 🍸</h3>
+        <p class="shaker-subtitle">Elige 3 "esencias" y agita tu móvil (o pulsa el botón).</p>
+
+        <div class="essences-grid" id="essences-grid">
+            </div>
+
+        <div class="shaker-container">
+            <div id="shaker-img" class="shaker-visual">
+                <span class="material-icons" style="font-size: 4rem; color:#ccc;">sports_bar</span>
+            </div>
+            <div id="shaker-status" class="shaker-status">Añade ingredientes...</div>
+        </div>
+
+        <button id="btn-mix-manual" class="btn-big-action" onclick="procesarMezcla()" disabled>
+            ¡MEZCLAR AHORA! 🌪️
+        </button>
+    </div>
+</div>
     <script src="js/script.js"></script>
 </body>
 </html>

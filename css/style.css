@@ -216,3 +216,92 @@ body {
     .container { padding: 15px 12px; }
     .card h3 { font-size: 1.3rem; }
 }
+
+/* SHAKER STYLES */
+.shaker-card {
+    background: #111;
+    border: 1px solid #333;
+    text-align: center;
+    max-width: 360px;
+}
+
+.shaker-title { color: white; margin-bottom: 5px; }
+.shaker-subtitle { color: #888; font-size: 0.85rem; margin-bottom: 20px; }
+
+/* Grid de Esencias */
+.essences-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+.essence-btn {
+    background: #222;
+    border: 1px solid #444;
+    border-radius: 12px;
+    padding: 10px;
+    color: #ccc;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.essence-btn span { font-size: 1.5rem; }
+.essence-btn small { font-size: 0.7rem; text-transform: uppercase; }
+
+.essence-btn.selected {
+    background: var(--gold);
+    color: black;
+    border-color: var(--gold);
+    transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+}
+
+/* Coctelera Visual */
+.shaker-container {
+    height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.shaker-visual {
+    width: 80px;
+    height: 80px;
+    background: #2a2a35;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed #555;
+    transition: 0.3s;
+}
+
+.shaker-visual.ready {
+    background: linear-gradient(135deg, var(--gold), #ff9800);
+    border: 2px solid white;
+    box-shadow: 0 0 20px rgba(255, 165, 0, 0.5);
+}
+
+.shaker-visual.shaking {
+    animation: shake-hard 0.5s ease-in-out infinite;
+}
+
+@keyframes shake-hard {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-10deg); }
+    20% { transform: translate(-3px, 0px) rotate(10deg); }
+    30% { transform: translate(3px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(10deg); }
+    50% { transform: translate(-1px, 2px) rotate(-10deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-10deg); }
+}
+
+.shaker-status { margin-top: 10px; font-size: 0.9rem; color: #aaa; min-height: 20px;}

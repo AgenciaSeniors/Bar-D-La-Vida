@@ -363,3 +363,231 @@ function updateConnectionStatus() {
 
 window.addEventListener('online', () => { updateConnectionStatus(); showToast("Conexión restaurada"); cargarMenu(); });
 window.addEventListener('offline', () => { updateConnectionStatus(); showToast("Modo Offline", "warning"); });
+
+// ==========================================
+// 🌪️ SHAKER VIRTUAL (Mixer IA)
+// ==========================================
+
+const ESENCIAS = [
+    { id: 'fresco', icono: '🧊', nombre: 'Fresco' },
+    { id: 'dulce', icono: '🍬', nombre: 'Dulce' },
+    { id: 'fuerte', icono: '🔥', nombre: 'Potente' },
+    { id: 'frutal', icono: '🍍', nombre: 'Frutal' },
+    { id: 'amargo', icono: '🍋', nombre: 'Ácido' },
+    { id: 'party', icono: '🎉', nombre: 'Fiesta' }
+];
+
+let shakerState = {
+    seleccionados: [],
+    isShaking: false,
+    shakeCount: 0
+};
+
+let watchID = null; // Para el acelerómetro
+
+function abrirShaker() {
+    const modal = document.getElementById('modal-shaker');
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('active'), 10);
+    
+    // Reiniciar estado
+    shakerState.seleccionados = [];
+    renderizarEsencias();
+    actualizarEstadoShaker();
+    iniciarDetectorMovimiento();
+}
+
+function cerrarShaker() {
+    const modal = document.getElementById('modal-shaker');
+    modal.classList.remove('active');
+    setTimeout(() => modal.style.display = 'none', 300);
+    detenerDetectorMovimiento();
+}
+
+function renderizarEsencias() {
+    const grid = document.getElementById('essences-grid');
+    grid.innerHTML = '';
+    
+    ESENCIAS.forEach(esencia => {
+        const btn = document.createElement('div');
+        btn.className = 'essence-btn';
+        btn.innerHTML = `<span>${esencia.icono}</span><small>${esencia.nombre}</small>`;
+        btn.onclick = () => toggleEsencia(esencia, btn);
+        grid.appendChild(btn);
+    });
+}
+
+function toggleEsencia(esencia, btnElement) {
+    const index = shakerState.seleccionados.indexOf(esencia.nombre);
+    
+    if (index > -1) {
+        // Deseleccionar
+        shakerState.seleccionados.splice(index, 1);
+        btnElement.classList.remove('selected');
+    } else {
+        // Seleccionar (Máximo 3)
+        if (shakerState.seleccionados.length < 3) {
+            shakerState.seleccionados.push(esencia.nombre);
+            btnElement.classList.add('selected');
+        } else {
+            showToast("Máximo 3 ingredientes", "warning");
+        }
+    }
+    actualizarEstadoShaker();
+}
+
+function actualizarEstadoShaker() {
+    const count = shakerState.seleccionados.length;
+    const visual = document.getElementById('shaker-img');
+    const status = document.getElementById('shaker-status');
+    const btn = document.getElementById('btn-mix-manual');
+    const icon = visual.querySelector('.material-icons');
+
+    if (count === 0) {
+        status.textContent = "Añade ingredientes...";
+        visual.classList.remove('ready');
+        icon.style.color = "#ccc";
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+    } else {
+        status.textContent = `${count}/3 Ingredientes`;
+        icon.style.color = "white";
+        
+        if (count >= 1) { // Mínimo 1 para mezclar
+            visual.classList.add('ready');
+            status.textContent = "¡Agita tu móvil o pulsa el botón!";
+            status.style.color = "var(--gold)";
+            btn.disabled = false;
+            btn.style.opacity = "1";
+        }
+    }
+}
+
+// --- DETECTOR DE AGITACIÓN (SHAKE) ---
+function iniciarDetectorMovimiento() {
+    if (window.DeviceMotionEvent) {
+        // Umbral de sensibilidad
+        const umbral = 15; 
+        let lastX = 0, lastY = 0, lastZ = 0;
+
+        const handleMotion = (event) => {
+            // Si ya estamos procesando, ignorar
+            if (shakerState.isProcessing) return; 
+            // Si no hay suficientes ingredientes, ignorar
+            if (shakerState.seleccionados.length === 0) return;
+
+            const acc = event.accelerationIncludingGravity;
+            if (!acc) return;
+
+            const deltaX = Math.abs(acc.x - lastX);
+            const deltaY = Math.abs(acc.y - lastY);
+            const deltaZ = Math.abs(acc.z - lastZ);
+
+            if (deltaX + deltaY + deltaZ > umbral) {
+                shakerState.shakeCount++;
+                document.getElementById('shaker-img').classList.add('shaking');
+                
+                // Necesita agitarse un poco, no solo un golpe accidental
+                if (shakerState.shakeCount > 5) {
+                    procesarMezcla();
+                    shakerState.shakeCount = 0; // Reset
+                }
+                
+                // Quitar clase shaking después de un momento
+                clearTimeout(shakerState.shakeTimer);
+                shakerState.shakeTimer = setTimeout(() => {
+                    document.getElementById('shaker-img').classList.remove('shaking');
+                }, 300);
+            }
+
+            lastX = acc.x;
+            lastY = acc.y;
+            lastZ = acc.z;
+        };
+        
+        window.addEventListener('devicemotion', handleMotion, true);
+        watchID = handleMotion; // Guardar referencia para quitarlo luego
+    }
+}
+
+function detenerDetectorMovimiento() {
+    if (watchID) {
+        window.removeEventListener('devicemotion', watchID, true);
+        watchID = null;
+    }
+}
+
+// --- LLAMADA A LA IA ---
+async function procesarMezcla() {
+    if (shakerState.isProcessing) return;
+    shakerState.isProcessing = true;
+    detenerDetectorMovimiento(); // Parar sensores
+
+    // UI Feedback
+    const btn = document.getElementById('btn-mix-manual');
+    const status = document.getElementById('shaker-status');
+    const visual = document.getElementById('shaker-img');
+    
+    btn.textContent = "Mezclando sabores...";
+    status.textContent = "🧠 La IA está probando la mezcla...";
+    visual.classList.add('shaking'); // Animación perpetua mientras carga
+
+    // Preparar datos para Google Script
+    // 1. Obtenemos nombres de productos de tu variable global todosLosProductos
+    const menuSimple = todosLosProductos.map(p => p.nombre).join(', ');
+    
+    // 2. URL de tu Script
+    const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwfGlwmuKVSy630EnyWR4gJ0k-5hPVIwWg_bXS07m0v79KahgZ8J3Eyvi_DQu1-MbOg/exec";
+
+    try {
+        const response = await fetch(URL_SCRIPT, {
+            method: 'POST',
+            // Enviamos un JSON stringificado como pide tu script doPost(e)
+            body: JSON.stringify({
+                tipo: "Cualquiera", // Genérico, la IA decidirá
+                sabor: shakerState.seleccionados.join(', '), // Ej: "Fresco, Dulce, Fiesta"
+                menu: menuSimple // Contexto vital para la IA
+            }),
+            headers: { "Content-Type": "text/plain" } // Evita preflight CORS
+        });
+
+        const data = await response.json();
+        
+        if (data.recomendacion) {
+            mostrarResultadoShaker(data.recomendacion);
+        } else {
+            throw new Error("Sin respuesta válida");
+        }
+
+    } catch (error) {
+        console.error(error);
+        status.textContent = "Error de conexión. Intenta de nuevo.";
+        shakerState.isProcessing = false;
+        visual.classList.remove('shaking');
+        btn.textContent = "¡MEZCLAR AHORA!";
+    }
+}
+
+function mostrarResultadoShaker(nombreProducto) {
+    // Buscar el producto completo en el array global
+    // Usamos 'includes' para ser tolerantes si la IA añade algo extra o falla una tilde
+    const producto = todosLosProductos.find(p => 
+        p.nombre.toLowerCase().includes(nombreProducto.toLowerCase()) || 
+        nombreProducto.toLowerCase().includes(p.nombre.toLowerCase())
+    );
+
+    cerrarShaker(); // Cerramos el mixer
+
+    if (producto) {
+        abrirDetalle(producto.id); // Abrimos el detalle del producto ganador
+        showToast("¡Aquí está tu mezcla perfecta! ✨");
+    } else {
+        // Fallback si la IA alucina un nombre que no existe
+        showToast("La mezcla fue tan rara que explotó... 💥 Intenta otra.", "error");
+    }
+    
+    // Resetear botón por si vuelven a abrir
+    const btn = document.getElementById('btn-mix-manual');
+    btn.textContent = "¡MEZCLAR AHORA!";
+    shakerState.isProcessing = false;
+}
