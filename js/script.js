@@ -625,25 +625,47 @@ async function procesarMezcla() {
         btn.disabled = false;
     }
 }
+// --- [ INICIO DE BLOQUE CORREGIDO ] ---
+
+/**
+ * Normaliza texto eliminando tildes y convirtiendo a minúsculas
+ * Ayuda a que "Piña" coincida con "piña" o "pina"
+ */
+function normalizarTexto(texto) {
+    return texto ? texto.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+}
 
 function mostrarResultadoShaker(nombreRecibido) {
-    const nombreIA = nombreRecibido.toLowerCase().trim();
+    if (!nombreRecibido) return;
+    
+    const nombreIA = normalizarTexto(nombreRecibido);
+    console.log("DEBUG: Buscando coincidencia para:", nombreIA);
 
+    // Búsqueda inteligente en el array local de productos
     const producto = todosLosProductos.find(p => {
-        const nombreBD = p.nombre.toLowerCase();
+        const nombreBD = normalizarTexto(p.nombre);
+        // Coincidencia si el nombre de la IA está contenido en la BD o viceversa
         return nombreBD.includes(nombreIA) || nombreIA.includes(nombreBD);
     });
 
     cerrarShaker();
 
     if (producto) {
+        // ÉXITO: Abrimos el detalle del producto encontrado
         abrirDetalle(producto.id);
-        showToast(`✨ Combinación perfecta: ${producto.nombre}`);
+        showToast(`✨ Combinación perfecta: ${producto.nombre}`, "success");
     } else {
-        const fallback = todosLosProductos.find(p => p.destacado) || todosLosProductos[0];
+        // CORRECCIÓN CRÍTICA: Eliminamos el fallback automático al producto [0] (Mojito)
+        console.warn("IA sugirió un producto no encontrado en el menú local:", nombreRecibido);
+        
+        showToast("¡Mezcla exótica! Prueba esta recomendación de la casa", "info");
+        
+        // Solo abrimos un producto si está marcado como destacado, si no, solo avisamos
+        const fallback = todosLosProductos.find(p => p.destacado);
         if (fallback) abrirDetalle(fallback.id);
-        showToast("¡Sorpresa! Prueba nuestra recomendación de la casa", "info");
     }
     
     shakerState.isProcessing = false;
 }
+
+// --- [ FIN DE BLOQUE CORREGIDO ] ---
